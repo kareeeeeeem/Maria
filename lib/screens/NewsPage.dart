@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/date_symbol_data_local.dart'; 
 import 'package:intl/intl.dart'; 
-import 'dart:async'; // لاستخدام Timer في مكون العداد إذا احتجنا إليه مستقبلاً
+import 'dart:async'; 
 
 // =========================================================
 // I. نموذج البيانات والثوابت
@@ -11,13 +11,13 @@ import 'dart:async'; // لاستخدام Timer في مكون العداد إذا
 
 // 1. تعريف AppColors
 class AppColors {
-  static const Color primaryBlue = Color(0xFF4E342E); 
-  static const Color secondaryGold = Color(0xFFFFF8E1); 
+  static const Color primaryBlue = Color(0xFF4E342E); // بني داكن
+  static const Color secondaryGold = Color(0xFFFFF8E1); // ذهبي فاتح
   static const Color backgroundColor = Color(0xFFF5F5F5); 
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
-  static const Color alertRed = Color(0xFFE53935); // للتحذيرات والحذف
+  static const Color alertRed = Color(0xFFE53935); 
 }
 
 // 2. نموذج بيانات الأخبار
@@ -43,7 +43,6 @@ class ChurchPost {
       id: doc.id,
       title: data?['title'] ?? 'عنوان مفقود',
       body: data?['body'] ?? 'محتوى مفقود',
-      // يجب التعامل مع Timestamp عند قراءة التاريخ من Firestore
       date: (data?['date'] as Timestamp? ?? Timestamp.now()).toDate(), 
       isUrgent: data?['isUrgent'] ?? false,
     );
@@ -56,7 +55,6 @@ class ChurchPost {
       'body': body,
       'date': Timestamp.fromDate(date),
       'isUrgent': isUrgent,
-      // يمكن إضافة حقل 'category': 'News' إذا لزم الأمر للتمييز في قاعدة البيانات
     };
   }
 }
@@ -76,34 +74,78 @@ class _NewsPageState extends State<NewsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  // 🔴 الحالة الجديدة: تحديد ما إذا كان المستخدم مصادق عليه (مشرف مؤقت)
+  // 🔴 الحالة الجديدة: تحديد ما إذا كان المستخدم مصادق عليه (مشرف)
   bool _isAdmin = false; 
+  // 🔴 حالة التحميل: لتأجيل عرض المحتوى حتى يتم التحقق من الدور
+  bool _isLoading = true; 
   bool _isLocaleInitialized = false; 
 
-  // 🔴 استخدام المتغير العالمي __app_id 
+  // استخدام المتغير العالمي __app_id 
   final String appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
 
   // تحديد مسار المجموعة (Collection Path)
-  // المسار: artifacts/{appId}/public/data/news
   late final CollectionReference _newsCollection;
 
   @override
   void initState() {
     super.initState();
     
-    // تهيئة مسار المجموعة
+    // تهيئة مسار مجموعة الأخبار العامة
     _newsCollection = _firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('news');
     
     // 1. بدء تهيئة اللغة العربية
     _initializeLocale();
 
-    // 2. الاستماع لحالة المصادقة
-    _auth.authStateChanges().listen((User? user) {
+    // 2. الاستماع لحالة المصادقة والتحقق من الدور
+    _setupAuthListener();
+  }
+  
+  // 🔴 دالة التحقق من صلاحية المسؤول من Firestore
+  // يتم جلب الدور من مسار: users/{uid}
+  Future<void> _checkAdminStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      // القراءة الآمنة لحقل isAdmin، مع افتراض false كقيمة افتراضية
+      final bool isAdmin = doc.data()?['isAdmin'] ?? false;
+      
       if (mounted) {
-        // أي مستخدم مصادق عليه هو "مشرف" (حسب طلب المستخدم)
         setState(() {
-          _isAdmin = user != null;
+          _isAdmin = isAdmin;
+          _isLoading = false; // 🔴 انتهى التحقق
         });
+      }
+    } catch (e) {
+      debugPrint('Admin Status Check Error: $e');
+      if (mounted) {
+        setState(() {
+          _isAdmin = false;
+          _isLoading = false; // إنهاء التحميل حتى في حالة الخطأ
+        });
+      }
+    }
+  }
+
+  // 🔴 دالة إعداد مستمع المصادقة
+  void _setupAuthListener() {
+    _auth.authStateChanges().listen((User? user) {
+      if (!mounted) return;
+
+      if (user != null) {
+        // 1. إذا كان المستخدم مصادقاً عليه، تحقق من الدور
+        _checkAdminStatus(user.uid);
+      } else {
+        // 2. إذا لم يكن مصادقاً عليه (مستخدم ضيف أو غير مسجل)
+        setState(() {
+          _isAdmin = false;
+          _isLoading = false; 
+        });
+        
+        // 3. محاولة تسجيل الدخول كضيف للسماح بقراءة الأخبار العامة
+        if (_auth.currentUser == null) {
+            _auth.signInAnonymously().catchError((e) {
+                debugPrint('Anonymous Auth Failed: $e');
+            });
+        }
       }
     });
   }
@@ -125,6 +167,13 @@ class _NewsPageState extends State<NewsPage> {
 
   // دالة حذف منشور
   Future<void> deletePost(BuildContext context, String postId) async {
+    if (!_isAdmin) { // 🔴 تحقق إضافي
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يجب أن تكون مشرفاً للقيام بهذه العملية.')),
+        );
+        return;
+    }
+    
     try {
       await _newsCollection.doc(postId).delete();
       if (context.mounted) {
@@ -144,7 +193,7 @@ class _NewsPageState extends State<NewsPage> {
 
   // دالة فتح شاشة الإضافة/التعديل
   void _navigateToAddEditPost({ChurchPost? post}) {
-    if (!_isAdmin) {
+    if (!_isAdmin) { // 🔴 التحقق من حالة المشرف
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يجب أن تكون مشرفاً للقيام بهذه العملية.')),
       );
@@ -163,7 +212,8 @@ class _NewsPageState extends State<NewsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLocaleInitialized) {
+    // 🔴 إظهار شاشة التحميل إذا لم تنتهِ تهيئة اللغة أو التحقق من الدور
+    if (!_isLocaleInitialized || _isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.backgroundColor,
         body: Center(child: CircularProgressIndicator(color: AppColors.primaryBlue)),
@@ -173,9 +223,11 @@ class _NewsPageState extends State<NewsPage> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        title: const Center(child: Text('📰 أخبار الكنيسة'  , style: TextStyle(color: AppColors.secondaryGold))),
+        title: const Text('📰 أخبار الكنيسة'  , style: TextStyle(color: AppColors.secondaryGold)),
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
+                 centerTitle: true,
+
       ),
       
       // جسم الصفحة: جلب البيانات من Firestore
@@ -188,7 +240,8 @@ class _NewsPageState extends State<NewsPage> {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+            // لا حاجة لإظهار شريط تحميل هنا إذا كان _isLoading يُدير التحميل الأولي
+            return const SizedBox.shrink(); 
           }
 
           if (snapshot.data == null || snapshot.data!.docs.isEmpty) {
@@ -212,7 +265,7 @@ class _NewsPageState extends State<NewsPage> {
             itemBuilder: (context, index) {
               return _PostCard(
                 post: posts[index],
-                isAdmin: _isAdmin,
+                isAdmin: _isAdmin, // 🔴 تمرير حالة المشرف للبطاقة
                 onDelete: () => deletePost(context, posts[index].id),
                 onEdit: () => _navigateToAddEditPost(post: posts[index]),
               );
@@ -222,7 +275,7 @@ class _NewsPageState extends State<NewsPage> {
       ),
 
       // زر الإضافة العائم يظهر فقط للمشرفين
-      floatingActionButton: _isAdmin
+      floatingActionButton: _isAdmin // 🔴 التحكم بالظهور
           ? FloatingActionButton.extended(
               onPressed: () => _navigateToAddEditPost(),
               icon: const Icon(Icons.add),
@@ -242,7 +295,7 @@ class _NewsPageState extends State<NewsPage> {
 // =========================================================
 
 // ---------------------------------------------------------
-// بطاقة المنشور الواحدة (_PostCard) (تم تعديل الألوان هنا)
+// بطاقة المنشور الواحدة (_PostCard) 
 // ---------------------------------------------------------
 
 class _PostCard extends StatelessWidget {
@@ -261,8 +314,6 @@ class _PostCard extends StatelessWidget {
 
   // دالة تحويل الوقت إلى نص مناسب
   String _formatDate(DateTime date) {
-    // تنسيق التاريخ ليكون سهل القراءة باستخدام اللغة العربية
-    // مثال: 2025/11/10 | 02:41 PM
     return DateFormat('yyyy/MM/dd | hh:mm a', 'ar').format(date);
   }
 
@@ -284,7 +335,7 @@ class _PostCard extends StatelessWidget {
               Navigator.of(ctx).pop();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.alertRed, // خلفية حمراء
+              backgroundColor: AppColors.alertRed, 
               foregroundColor: Colors.white,
             ),
             child: const Text('حذف'),
@@ -299,8 +350,7 @@ class _PostCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       elevation: 4,
-      // 💡 يمكنك تعديل لون خلفية البطاقة هنا إذا أردت
-      color: AppColors.cardColor, // الافتراضي هو الأبيض
+      color: AppColors.cardColor,
       
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
@@ -321,7 +371,6 @@ class _PostCard extends StatelessWidget {
                 // التاريخ
                 Text(
                   _formatDate(post.date),
-                  // 💡 لون التاريخ (AppColors.textSecondary هو لون رمادي فاتح)
                   style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
                 
@@ -329,12 +378,11 @@ class _PostCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.alertRed, // خلفية عاجل حمراء
+                      color: AppColors.alertRed, 
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
                       '🚨 عاجل',
-                      // 💡 لون نص "عاجل" (AppColors.secondaryGold هو لون ذهبي فاتح)
                       style: TextStyle(
                         color: AppColors.secondaryGold,
                         fontWeight: FontWeight.bold,
@@ -350,7 +398,6 @@ class _PostCard extends StatelessWidget {
             // العنوان الرئيسي
             Text(
               post.title,
-              // 💡 لون العنوان الرئيسي (AppColors.textPrimary هو لون داكن)
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -358,13 +405,11 @@ class _PostCard extends StatelessWidget {
               ),
               textAlign: TextAlign.right,
             ),
-            // 💡 لون الخط الفاصل (AppColors.secondaryGold هو لون ذهبي فاتح)
             const Divider(color: AppColors.secondaryGold, thickness: 1, height: 15),
 
             // محتوى الخبر
             Text(
               post.body,
-              // 💡 لون محتوى الخبر (AppColors.textSecondary هو لون رمادي فاتح)
               style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.4),
               textAlign: TextAlign.right,
               maxLines: 4,
@@ -372,24 +417,20 @@ class _PostCard extends StatelessWidget {
             ),
 
             // أزرار المشرف (تعديل وحذف)
-            if (isAdmin)
+            if (isAdmin) // 🔴 التحكم بالظهور
               Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton.icon(
-                      // 💡 لون أيقونة التعديل (AppColors.primaryBlue هو لون أزرق داكن/بني)
                       icon: const Icon(Icons.edit, size: 20, color: AppColors.primaryBlue),
-                      // 💡 لون نص التعديل
                       label: const Text('تعديل', style: TextStyle(color: AppColors.primaryBlue)),
                       onPressed: onEdit,
                     ),
                     const SizedBox(width: 8),
                     TextButton.icon(
-                      // 💡 لون أيقونة الحذف (AppColors.alertRed هو لون أحمر)
                       icon: const Icon(Icons.delete, color: AppColors.alertRed, size: 20),
-                      // 💡 لون نص الحذف
                       label: const Text('حذف', style: TextStyle(color: AppColors.alertRed)),
                       onPressed: () => _showDeleteConfirmation(context),
                     ),
@@ -409,7 +450,7 @@ class _PostCard extends StatelessWidget {
 
 class AddEditPostScreen extends StatefulWidget {
   final CollectionReference newsCollection;
-  final ChurchPost? post; // إذا كان موجوداً: تعديل. إذا كان null: إضافة.
+  final ChurchPost? post; 
 
   const AddEditPostScreen({
     super.key, 
@@ -452,15 +493,16 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       return;
     }
 
-    // 🔴 التحقق من المصادقة مرة أخرى (إجراء أمان إضافي)
-    if (FirebaseAuth.instance.currentUser == null) {
+    // 🔴 التحقق من المصادقة (إجراء أمان إضافي)
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || currentUser.isAnonymous) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('خطأ: يجب أن تكون مصادقاً عليه للنشر.')),
+            const SnackBar(content: Text('خطأ: يجب أن تكون مشرفاً ومصادقاً عليه للنشر.')),
           );
         }
         return;
-      }
+    }
       
     setState(() { _isLoading = true; });
 

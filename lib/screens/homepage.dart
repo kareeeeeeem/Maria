@@ -5,16 +5,64 @@ import 'dart:math'; // لاستخدام Random لجلب الآية العشوا�
 import 'dart:async'; // لاستخدام Timer
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart' show DateFormat; 
-
-
-// هذا ملف افتراضي، يجب التأكد من وجوده في المسار الصحيح
+// يجب عليك التأكد من وجود هذه الملفات في المسار الصحيح
 import '../widgets/app_drawer.dart'; 
+
+
+// ==================================================================
+// 🔴 الثوابت ونماذج البيانات (Constants and Models)
+// ==================================================================
+
+// 1. تعريف AppColors
+class AppColors {
+  static const Color primaryBlue = Color(0xFF4E342E); // لون بني داكن/كحلي
+  static const Color secondaryGold = Color(0xFFFFF8E1); // لون ذهبي فاتح/كريمي
+  static const Color backgroundColor = Color(0xFFF5F5F5); 
+  static const Color cardColor = Colors.white;
+  static const Color textPrimary = Color(0xFF212121);
+  static const Color textSecondary = Color(0xFF757575);
+  static const Color alertRed = Color.fromARGB(255, 1, 64, 127); // لون أحمر غامق/أزرق غامق للتنبيه
+}
+
+// 2. نموذج بيانات الأخبار
+class ChurchPost {
+  final String id;
+  final String title;
+  final String body;
+  final DateTime date;
+  final bool isUrgent; 
+
+  const ChurchPost({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.date,
+    this.isUrgent = false,
+  });
+
+  factory ChurchPost.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>?;
+    return ChurchPost(
+      id: doc.id,
+      title: data?['title'] ?? 'عنوان مفقود',
+      body: data?['body'] ?? 'محتوى مفقود',
+      date: (data?['date'] as Timestamp? ?? Timestamp.now()).toDate(), 
+      isUrgent: data?['isUrgent'] ?? false,
+    );
+  }
+}
+
+// دالة تحويل الوقت إلى نص مناسب
+String _formatDate(DateTime date) {
+    return DateFormat('yyyy/MM/dd | hh:mm a', 'ar').format(date);
+}
+
 
 // ******************************************************************
 // 🔴 دالة محاكاة لجلب آية اليوم من قائمة محلية
 // ******************************************************************
 
-// قائمة الآيات المحلية (100 آية محاكاة)
+// قائمة الآيات المحلية (تم اختصارها للمثال)
 const List<String> localBibleVerses = [
   'لِأَنَّهُ هُوَ الَّذِي يُعْطِي جَمِيعاً حَيَاةً وَنَفْساً وَكُلَّ شَيْءٍ. (أعمال الرسل 17:25)',
   'مَعَ الْمَسِيحِ صُلِبْتُ، فَأَحْيَا لَا أَنَا، بَلِ الْمَسِيحُ يَحْيَا فِيَّ. (غلاطية 2:20)',
@@ -130,70 +178,19 @@ const List<String> localBibleVerses = [
   'لِكُلِّ شَيْءٍ زَمَانٌ. (الجامعة 3:1)',
 ];
 
-// الدالة المعدلة: تجلب آية عشوائية من القائمة المحلية
 Future<String> fetchDailyVerse() async {
   final int randomIndex = Random().nextInt(localBibleVerses.length);
   await Future.delayed(const Duration(milliseconds: 500)); 
   return localBibleVerses[randomIndex];
 }
 
-// ==================================================================
-// 🔴 الثوابت ونماذج البيانات
-// ==================================================================
-
-// 1. تعريف AppColors
-class AppColors {
-  static const Color primaryBlue = Color(0xFF4E342E); 
-  static const Color secondaryGold = Color(0xFFFFF8E1); 
-  static const Color backgroundColor = Color(0xFFF5F5F5); 
-  static const Color cardColor = Colors.white;
-  static const Color textPrimary = Color(0xFF212121);
-  static const Color textSecondary = Color(0xFF757575);
-  static const Color alertRed = Color.fromARGB(255, 1, 64, 127);
-}
-
-// 2. نموذج بيانات الأخبار
-class ChurchPost {
-  final String id;
-  final String title;
-  final String body;
-  final DateTime date;
-  final bool isUrgent; 
-
-  const ChurchPost({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.date,
-    this.isUrgent = false,
-  });
-
-  factory ChurchPost.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>?;
-    return ChurchPost(
-      id: doc.id,
-      title: data?['title'] ?? 'عنوان مفقود',
-      body: data?['body'] ?? 'محتوى مفقود',
-      // يجب التعامل مع Timestamp عند قراءة التاريخ من Firestore
-      date: (data?['date'] as Timestamp? ?? Timestamp.now()).toDate(), 
-      isUrgent: data?['isUrgent'] ?? false,
-    );
-  }
-}
-
-// دالة تحويل الوقت إلى نص مناسب
-String _formatDate(DateTime date) {
-    // تنسيق التاريخ ليكون سهل القراءة باستخدام اللغة العربية
-    return DateFormat('yyyy/MM/dd | hh:mm a', 'ar').format(date);
-}
 
 // ==================================================================
 // 🔴 الصفحة الرئيسية (HomePage)
 // ==================================================================
 
 class HomePage extends StatefulWidget {
-    static const String routeName = "/HomePage"; 
-
+  static const String routeName = "/HomePage"; 
   const HomePage({super.key});
 
   @override
@@ -203,22 +200,24 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // قائمة بأزرار الوصول السريع
   final List<Map<String, dynamic>> quickActions = const [
-    {'title': 'مواعيد القداسات', 'icon': Icons.church, 'route': '/masses'},
-    {'title': 'الخمس خبزات وسمكتين', 'icon': Icons.food_bank, 'route': '/StorePage'},
+    {'title': ' القداسات و العشيات', 'icon': Icons.church, 'route': '/masses'},
+    {'title': 'الكانتين', 'icon': Icons.food_bank, 'route': '/StorePage'},
     {'title': 'الاجتماعات', 'icon': Icons.groups_2, 'route': '/meetings'},
     {'title': 'الأحداث والأنشطة', 'icon': Icons.event, 'route': '/events'},
   ];
 
   // متغيرات الحالة
   String _dailyVerse = 'جاري جلب الآية...';
-  // 🔴 تم تغييرها لتكون قائمة للتعامل مع أكثر من خبر عاجل
   List<ChurchPost> _urgentNewsList = []; 
   List<ChurchPost> _latestNews = []; 
   bool _isLoadingVerse = true;
   bool _isLoadingNews = true;
-  
-  // 🔴 متغير التحكم في شريط الأخبار العاجلة
+  bool _hasFetchError = false; // 👈 متغير جديد لتتبع خطأ الجلب
+  DateTime? _lastPressed; // 👈 متغير لتتبع ضغطة زر الرجوع
+
+  // متغير التحكم في شريط الأخبار العاجلة والتمرير التلقائي
   final PageController _pageController = PageController();
+  Timer? _tickerTimer;
   
   // استخدام المتغير العالمي __app_id 
   final String _appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
@@ -229,25 +228,26 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     
-    // تهيئة اللغة العربية
     _initializeLocale();
-
-    // تهيئة مسار Firestore (نفس المسار المستخدم في NewsPage)
     _newsCollection = FirebaseFirestore.instance.collection('artifacts').doc(_appId).collection('public').doc('data').collection('news');
     
     _getDailyVerse();
     _fetchNewsData(); 
+    // بدء التمرير التلقائي للأخبار العاجلة بعد جلب البيانات
+    _startNewsTickerTimer(); 
   }
 
   @override
   void dispose() {
-    _pageController.dispose(); // 👈 التخلص من PageController
+    _pageController.dispose();
+    _tickerTimer?.cancel(); // 👈 إلغاء المؤقت عند التخلص من الصفحة
     super.dispose();
   }
 
-  // دالة لتهيئة بيانات اللغة العربية (لتجنب LocaleDataException)
+  // دالة لتهيئة بيانات اللغة العربية 
   Future<void> _initializeLocale() async {
     try {
+      // يفضل نقل هذا الاستدعاء إلى دالة main()
       await initializeDateFormatting('ar', null);
     } catch (e) {
       debugPrint('Error initializing locale data: $e');
@@ -259,9 +259,8 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
-
-
-  // 1. جلب آية اليوم من القائمة المحلية
+  
+  // دالة جلب آية اليوم
   Future<void> _getDailyVerse() async {
     final verse = await fetchDailyVerse();
     if (mounted) {
@@ -272,30 +271,25 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 🔴 2. جلب الأخبار العاجلة والأخبار العادية من Firestore (معدل لجلب قائمة أخبار عاجلة)
+  // جلب الأخبار العاجلة والأخبار العادية من Firestore 
   Future<void> _fetchNewsData() async {
     if (mounted) {
       setState(() {
         _isLoadingNews = true;
+        _hasFetchError = false;
       });
     }
 
     try {
-      // 2.1 جلب الخبر العاجل الأحدث (يتم جلب 5 أخبار كحد أقصى)
+      // 2.1 جلب الخبر العاجل الأحدث (5 أخبار كحد أقصى)
       final urgentQuerySnapshot = await _newsCollection
           .where('isUrgent', isEqualTo: true)
           .orderBy('date', descending: true)
-          .limit(5) // 👈 تم التعديل لجلب قائمة
+          .limit(5)
           .get();
 
-      if (urgentQuerySnapshot.docs.isNotEmpty) {
-        _urgentNewsList = urgentQuerySnapshot.docs.map((doc) => ChurchPost.fromFirestore(doc)).toList();
-        debugPrint('✅ تم جلب ${_urgentNewsList.length} أخبار عاجلة بنجاح.'); 
-      } else {
-        _urgentNewsList = [];
-        debugPrint('ℹ️ لا يوجد خبر عاجل حالياً.');
-      }
-
+      _urgentNewsList = urgentQuerySnapshot.docs.map((doc) => ChurchPost.fromFirestore(doc)).toList();
+      
       // 2.2 جلب أحدث 3 أخبار غير عاجلة
       final latestNewsQuerySnapshot = await _newsCollection
           .where('isUrgent', isEqualTo: false)
@@ -304,12 +298,14 @@ class _HomePageState extends State<HomePage> {
           .get();
 
       _latestNews = latestNewsQuerySnapshot.docs.map((doc) => ChurchPost.fromFirestore(doc)).toList();
-      debugPrint('✅ تم جلب ${_latestNews.length} أخبار عادية بنجاح.');
 
     } catch (e) {
       debugPrint('❌❌ خطأ فادح في جلب بيانات الأخبار في HomePage: $e');
-      // تذكير: يجب إنشاء فهرس في Firestore لدعم هذا الاستعلام
-      
+      if (mounted) {
+        setState(() {
+          _hasFetchError = true; // الإشارة إلى وجود خطأ في الجلب
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -318,6 +314,57 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+
+  // دالة تشغيل مؤقت التمرير التلقائي للأخبار العاجلة
+  void _startNewsTickerTimer() {
+    _tickerTimer?.cancel();
+    _tickerTimer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
+      if (_urgentNewsList.isNotEmpty && _pageController.hasClients) {
+        int nextPage = _pageController.page!.round() + 1;
+        if (nextPage >= _urgentNewsList.length) {
+          nextPage = 0; 
+        }
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+// داخل الكلاس _HomePageState
+Future<bool> _onWillPop() async {
+  final now = DateTime.now();
+  final lastPressed = _lastPressed;
+  
+  const exitDuration = Duration(seconds: 2); 
+
+  if (lastPressed == null || now.difference(lastPressed) > exitDuration) {
+    _lastPressed = now; 
+    
+    // 💡 هذا هو كود SnackBar المعدل مع إضافة الـ Margin
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'اضغط مرة أخرى للخروج ', 
+          textAlign: TextAlign.center, 
+          style: TextStyle(color: AppColors.secondaryGold, fontWeight: FontWeight.bold),
+        ),
+        duration: exitDuration,
+        backgroundColor: AppColors.primaryBlue, 
+        behavior: SnackBarBehavior.floating, 
+        
+        // 👈 إضافة تباعد (Margin/Padding)
+        margin: const EdgeInsets.only(bottom: 20, left: 60, right: 60),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), // شكل دائري أفضل
+      ),
+    );
+    
+    return false; // منع الخروج
+  }
+  
+  return true; // السماح بالخروج
+}
 
 
   @override
@@ -329,89 +376,88 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    return Directionality( // لتحديد الاتجاه من اليمين لليسار (RTL) للغة العربية
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppColors.backgroundColor,
-        
-        // 1. الـ AppBar (شريط التطبيق العلوي)
-        appBar: AppBar(
+    return WillPopScope( // 👈 استخدام WillPopScope للتحكم في زر الرجوع
+      onWillPop: _onWillPop,
+      child: Directionality( // لتحديد الاتجاه من اليمين لليسار (RTL) للغة العربية
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: AppColors.backgroundColor,
           
-          backgroundColor: AppColors.primaryBlue,
-          elevation: 0,
-          // title: const Text('الكنيسة القبطية الأرثوذكسية', style: TextStyle(color: AppColors.secondaryGold, fontSize: 18)),
-          actions: [
-            // زر الإشعارات 
-            IconButton(
-              icon: const Icon(Icons.notifications, color: AppColors.secondaryGold),
-              onPressed: () {
-                 // افترضنا وجود المسار /notifications
-                 Navigator.pushNamed(context, NotificationsPage.routeName);
-              },
-            ),
-          ],
-        ),
-        
-        // 2. الـ Drawer 
-        drawer: const AppDrawer(),
-        
-        // 3. جسم الصفحة (Body)
-        body: RefreshIndicator(
-          onRefresh: () async {
-            setState(() {
-              _isLoadingVerse = true;
-              _isLoadingNews = true;
-            });
-            await _getDailyVerse();
-            await _fetchNewsData(); 
-          },
-          child: ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              // أ. بانر آية اليوم
-              _buildVerseOfTheDay(),
-              
-              const SizedBox(height: 20),
-              
-              // 🔴 ب. شريط الأخبار العاجلة (News Ticker) - يستخدم _urgentNewsList
-              _buildNewsTicker(),
-
-              const SizedBox(height: 20),
-              
-              // ج. أزرار الوصول السريع (Quick Access)
-              _buildQuickActionsGrid(context),
-
-              const SizedBox(height: 20),
-              
-              // 🔴 هـ. أحدث أخبار الكنيسة (3 أخبار عادية) - يستخدم _latestNews
-               Text('أخبار الكنيسة',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 10),
-              _buildLatestNewsSection(context),
-
-              // زر عرض المزيد للأخبار
-              if (_latestNews.isNotEmpty || _urgentNewsList.isNotEmpty) // 👈 تم تحديث المتغير
-                TextButton.icon(
-                  onPressed: () {
-                    // الافتراض أن صفحة الأخبار هي /news
-                    Navigator.pushNamed(context, '/news'); 
-                  },
-                  icon: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('عرض كل الأخبار', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primaryBlue,
-                    alignment: Alignment.centerLeft,
-                  ),
-                ),
+          // 1. الـ AppBar (شريط التطبيق العلوي)
+          appBar: AppBar(
+            backgroundColor: AppColors.primaryBlue,
+            elevation: 0,
+            actions: [
+              // زر الإشعارات 
+              IconButton(
+                icon: const Icon(Icons.notifications, color: AppColors.secondaryGold),
+                onPressed: () {
+                   Navigator.pushNamed(context, NotificationsPage.routeName);
+                },
+              ),
             ],
+          ),
+          
+          // 2. الـ Drawer 
+          drawer: const AppDrawer(),
+          
+          // 3. جسم الصفحة (Body)
+          body: RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _isLoadingVerse = true;
+                _isLoadingNews = true;
+              });
+              await _getDailyVerse();
+              await _fetchNewsData(); 
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                // أ. بانر آية اليوم
+                _buildVerseOfTheDay(),
+                
+                const SizedBox(height: 20),
+                
+                // ب. شريط الأخبار العاجلة (News Ticker) 
+                _buildNewsTicker(),
+
+                const SizedBox(height: 20),
+                
+                // ج. أزرار الوصول السريع (Quick Access)
+                _buildQuickActionsGrid(context),
+
+                const SizedBox(height: 20),
+                
+                // هـ. أحدث أخبار الكنيسة (3 أخبار عادية)
+                 Text('أخبار الكنيسة',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 10),
+                _buildLatestNewsSection(context),
+
+                // زر عرض المزيد للأخبار
+                if (_latestNews.isNotEmpty || _urgentNewsList.isNotEmpty || _hasFetchError)
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/news'); 
+                    },
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    label: const Text('عرض كل الأخبار', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryBlue,
+                      alignment: Alignment.centerLeft,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // 1. آية اليوم
+  // 1. آية اليوم (Widget)
   Widget _buildVerseOfTheDay() {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -451,10 +497,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
   
-  // 🔴 2. شريط الأخبار العاجلة (معدل لعرض قائمة باستخدام PageView)
+  // 2. شريط الأخبار العاجلة (News Ticker)
   Widget _buildNewsTicker() {
     
-    // إذا كان الخبر يتم تحميله
     if (_isLoadingNews) {
       return Container(
         height: 60,
@@ -468,14 +513,13 @@ class _HomePageState extends State<HomePage> {
       );
     }
     
-    // إذا لم يكن هناك أخبار عاجلة
     if (_urgentNewsList.isEmpty) { 
         return const SizedBox.shrink(); 
     }
 
     // بناء الشريط العاجل
     return Container(
-      height: 60, // ارتفاع ثابت للصفحة
+      height: 60, 
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.alertRed.withOpacity(0.95),
@@ -488,7 +532,6 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
           
           Expanded(
-            // استخدام PageView لعرض الأخبار العاجلة بالتناوب
             child: PageView.builder(
               controller: _pageController,
               itemCount: _urgentNewsList.length,
@@ -508,7 +551,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           
-          // زر للتمرير إلى الخبر التالي يظهر فقط إذا كان هناك أكثر من خبر واحد
+          // زر للتمرير يظهر فقط إذا كان هناك أكثر من خبر واحد (يمكن الاعتماد على التمرير التلقائي الآن)
           if (_urgentNewsList.length > 1)
             Padding(
               padding: const EdgeInsets.only(right: 5.0),
@@ -578,34 +621,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
   
-  // د. عرض الحدث الأبرز القادم (تم وضعها كمثال ولم يتم استدعاؤها في الـ build)
-  Widget _buildUpcomingEventCard() {
-    // مثال لبطاقة حدث
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(15),
-        leading: const Icon(Icons.timer, color: AppColors.alertRed, size: 30),
-        title: const Text('مؤتمر الشباب السنوي',
-            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        subtitle: const Text('تبدأ بعد: 05 أيام و 12 ساعة (عداد تنازلي)',
-            style: TextStyle(color: AppColors.textSecondary)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // TODO: الانتقال لصفحة تفاصيل الحدث
-        },
-      ),
-    );
-  }
 
-  // 4. أحدث الأخبار العادية (تم ضبط الألوان مسبقًا)
+  // 4. أحدث الأخبار العادية 
   Widget _buildLatestNewsSection(BuildContext context) {
     if (_isLoadingNews) {
       return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
     }
     
-    // استخدام _latestNews التي تحتوي على أحدث 3 أخبار غير عاجلة
+    // معالجة خطأ الجلب
+    if (_hasFetchError) {
+      return Column(
+        children: [
+          const Text('❌ حدث خطأ أثناء جلب الأخبار من الخادم.', style: TextStyle(color: Colors.red, fontSize: 16)),
+          TextButton(
+            onPressed: _fetchNewsData, 
+            child: const Text('أعد المحاولة الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      );
+    }
+    
+    // عرض رسالة في حالة عدم وجود أخبار
     if (_latestNews.isEmpty) {
       return const Center(child: Text('لا توجد أخبار كنسية لعرضها حالياً.'));
     }

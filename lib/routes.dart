@@ -3,34 +3,41 @@ import 'package:churchapp/aus/login/login_screen.dart';
 import 'package:churchapp/aus/signup/signup_screen.dart';
 import 'package:churchapp/const/complete_profile_screen.dart';
 import 'package:churchapp/screens/ChurchStore.dart';
-import 'package:churchapp/screens/InventoryPage.dart';
+import 'package:churchapp/screens/libraryPage.dart';
+import 'package:churchapp/screens/MemberShipSignUp.dart';
 import 'package:churchapp/screens/NewsPage.dart';
 import 'package:churchapp/screens/ProfilePage.dart';
+import 'package:churchapp/screens/Requests/AdminRequestsPage.dart';
+import 'package:churchapp/screens/SundaySchoolManagement.dart';
+import 'package:churchapp/screens/VisitationAndShepherding.dart';
 import 'package:churchapp/screens/activities_page.dart';
 import 'package:churchapp/screens/admin_page.dart';
 import 'package:churchapp/screens/church_info_page.dart';
-import 'package:churchapp/screens/home_page.dart';
+import 'package:churchapp/screens/donation_page.dart';
+import 'package:churchapp/screens/homepage.dart';
 import 'package:churchapp/screens/kareemEmda.dart';
 import 'package:churchapp/screens/masses_page.dart';
 import 'package:churchapp/screens/meetings_page.dart';
 import 'package:churchapp/screens/notification/notification_screen.dart';
 import 'package:churchapp/screens/notification/sendNotifiactions.dart';
 import 'package:churchapp/screens/settings_page.dart';
-import 'package:churchapp/screens/sunday_school_page.dart';
-import 'package:churchapp/screens/visitation_page.dart';
+import 'package:churchapp/screens/Requests/visitation_page.dart';
 import 'package:churchapp/welcome/on_boarding/start_screen.dart';
 import 'package:churchapp/welcome/on_boarding/on_boarding_screen.dart';
 import 'package:churchapp/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
 
 final Map<String, WidgetBuilder> routes = {
-
-        '/': (context) => const StartScreen(), // <= هذا هو العنصر المفقود!
+ // ✅ تم دمج المسار الأولي مع /StartScreen
+        '/': (context) => const StartScreen(), 
+        '/StartScreen': (context) => const StartScreen(), // الاحتفاظ به للمرجعية
+        
         '/HomePage': (context) => const HomePage(), 
-        '/StartScreen': (context) => const StartScreen(), // هذا المسار مكرر الآن، لكن يُفضل الاحتفاظ بـ '/' للمسار الأولي
+        // ⚠️ ملاحظة: يجب أن يكون المسار الرئيسي بعد تسجيل الدخول هو '/home' كما استخدم في شاشة التسجيل
+        '/home': (context) => const HomePage(), 
 
         '/masses': (context) => const MassesPage(), 
-         '/SundaySchoolPage': (context) => const SundaySchoolPage(), 
+        //  '/SundaySchoolPage': (context) => const SundaySchoolPage(), 
         '/StorePage': (context) => const StorePage(), 
         '/InventoryPage': (context) => const InventoryPage(), 
 
@@ -54,9 +61,16 @@ final Map<String, WidgetBuilder> routes = {
         
         '/NotificationsPage': (context) => const NotificationsPage(), 
         '/AdminNotificationPage': (context) => const AdminNotificationPage(), 
+        '/HowUsViewPage': (context) => const HowUsView(),
+        '/DonationPage': (context) => const DonationPage(),
 
-
+        '/MemberDataEntryScreen': (context) => const MemberDataEntryScreen(),
+        '/VisitationScreen': (context) => const VisitationScreen(),
+        '/SundaySchoolHome': (context) => const SundaySchoolHome(),
+        '/AdminRequestsPage': (context) => const AdminRequestsPage(),
 
         
+
+
   
 };

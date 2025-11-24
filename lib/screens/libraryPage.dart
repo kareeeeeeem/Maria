@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart'; 
 import 'package:flutter/services.dart'; 
+import 'dart:async'; 
 
 // =========================================================
 // I. نموذج البيانات والثوابت
@@ -66,6 +67,7 @@ class GeneralItem {
       'stockQuantity': stockQuantity,
       'location': location,
       'imageUrl': imageUrl,
+      // لا يتم تضمين dateAdded هنا، بل يتم تعيينه عبر FieldValue.serverTimestamp() في الإضافة
     };
   }
   
@@ -90,8 +92,16 @@ class _InventoryPageState extends State<InventoryPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
+  // 🔴 حالة المشرف
   bool _isAdmin = false; 
+  // 🔴 حالة مدير المكتبة (تم إضافتها)
+  bool _isLibManager = false;
+  // 🔴 حالة التحميل الأولي
+  bool _isLoading = true; 
   
+  // 🔴 المُحصل الجديد: يُسمح بالتحرير إذا كان المشرف أو مدير المكتبة
+  bool get _canEdit => _isAdmin || _isLibManager;
+
   final String appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
 
   // مسار المجموعة: artifacts/{appId}/public/data/general_inventory
@@ -99,8 +109,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   // قائمة أسماء المواقع المعروضة
   final List<String> _locations = const [
-   'الرف 1 (متجر الكنيسة)', // يُقابل Shelf 1 في DB
-   'غرفة التخزين', // يُقابل Storage Room في DB
+   'المكتبه', // يُقابل Storage Room في DB
   ];
   
   // حالة لتبديل عرض العناصر بين المواقع
@@ -109,7 +118,7 @@ class _InventoryPageState extends State<InventoryPage> {
   // دالة مساعدة لربط اسم الموقع المعروض (Display Name) بالقيمة المخزنة في قاعدة البيانات (DB Value)
   String _getLocationDbValue(String displayName) {
     if (displayName == 'الرف 1 (متجر الكنيسة)') return 'Shelf 1';
-    if (displayName == 'غرفة التخزين') return 'Storage Room';
+    if (displayName == 'المكتبه') return 'Storage Room';
     return 'Shelf 1';
   }
 
@@ -127,22 +136,72 @@ class _InventoryPageState extends State<InventoryPage> {
         .doc('data')
         .collection('general_inventory');
     
-    // الاستماع لحالة المصادقة
-    _auth.authStateChanges().listen((User? user) {
+    // 🔴 1. الاستماع لحالة المصادقة والتحقق من الدور
+    _setupAuthListener();
+    
+    // إعدادات Firestore (تجنب مشاكل الذاكرة المؤقتة في الإطارات)
+    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
+  }
+  
+  // 🔴 دالة التحقق من صلاحية المسؤول/مدير المكتبة من Firestore
+  Future<void> _checkAdminStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      final data = doc.data();
+      
+      // القراءة الآمنة لحقلي isAdmin و isLibManager
+      final bool isAdmin = data?['isAdmin'] ?? false;
+      final bool isLibManager = data?['isLibManager'] ?? false; 
+      
       if (mounted) {
-        // أي مستخدم مصادق عليه هو "مشرف" (لإدارة المخزون)
         setState(() {
-          _isAdmin = user != null;
+          _isAdmin = isAdmin;
+          _isLibManager = isLibManager; 
+          _isLoading = false; 
         });
-        print('User signed in: ${_isAdmin ? user!.uid : 'No'}');
+      }
+      debugPrint('User $uid status: isAdmin=$_isAdmin, isLibManager=$_isLibManager, Can Edit=$_canEdit');
+    } catch (e) {
+      debugPrint('Admin/Manager Status Check Error: $e');
+      if (mounted) {
+        setState(() {
+          _isAdmin = false;
+          _isLibManager = false; 
+          _isLoading = false; 
+        });
+      }
+    }
+  }
+  
+  // 🔴 دالة إعداد مستمع المصادقة
+  void _setupAuthListener() {
+    _auth.authStateChanges().listen((User? user) {
+      if (user != null) {
+        // إذا كان المستخدم مسجلاً الدخول، تحقق من صلاحياته
+        _checkAdminStatus(user.uid);
+      } else {
+        // إذا لم يكن مسجلاً الدخول، إبقِ الصلاحيات على False
+        if (mounted) {
+          setState(() {
+            _isAdmin = false;
+            _isLibManager = false; // 🔴 تم تعيينها على False عند تسجيل الخروج
+            _isLoading = false; 
+          });
+        }
       }
     });
-    // إعدادات Firestore
-    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
   }
 
   // دالة حذف عنصر
   Future<void> deleteItem(BuildContext context, String itemId) async {
+    // 🔴 التعديل الأول: استخدم _canEdit للتحقق من صلاحية الحذف
+    if (!_canEdit) { 
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يجب أن تكون مشرفاً أو مديراً للمكتبة للقيام بهذه العملية.')),
+      );
+      return;
+    }
+    
     try {
       await _itemsCollection.doc(itemId).delete();
       if (context.mounted) {
@@ -162,9 +221,10 @@ class _InventoryPageState extends State<InventoryPage> {
 
   // دالة فتح شاشة الإضافة/التعديل
   void _navigateToAddEditItem({GeneralItem? item}) {
-    if (!_isAdmin) {
+    // 🔴 التعديل الثاني: استخدم _canEdit للتحقق من صلاحية الإضافة/التعديل
+    if (!_canEdit) { 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب أن تكون مشرفاً للقيام بهذه العملية.')),
+        const SnackBar(content: Text('يجب أن تكون مشرفاً أو مديراً للمكتبة للقيام بهذه العملية.')),
       );
       return;
     }
@@ -182,15 +242,25 @@ class _InventoryPageState extends State<InventoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔴 إظهار شاشة التحميل إذا لم ينتهِ التحقق من الدور
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundColor,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primaryBlue)),
+      );
+    }
+    
     // الحصول على القيمة المخزنة في DB للموقع المحدد
     final String locationQueryValue = _getLocationDbValue(_currentLocationFilter);
     
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        title: const Center(child: Text('📦 إدارة المخزون العام', style: TextStyle(color: AppColors.secondaryGold))),
+        title: const Text('📦 المكتبه', style: TextStyle(color: AppColors.secondaryGold)),
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
+        centerTitle: true,
+
       ),
       
       // جسم الصفحة: جلب البيانات من Firestore
@@ -202,6 +272,7 @@ class _InventoryPageState extends State<InventoryPage> {
           // قائمة العناصر
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              // استخدام استعلام WHERE لتصفية العناصر حسب الموقع
               stream: _itemsCollection
                   .where('location', isEqualTo: locationQueryValue) 
                   .snapshots(),
@@ -229,7 +300,7 @@ class _InventoryPageState extends State<InventoryPage> {
                     .map((doc) => GeneralItem.fromFirestore(doc))
                     .toList();
                 
-                // الترتيب المحلي في الذاكرة (الأحدث أولاً)
+                // الترتيب المحلي في الذاكرة (الأحدث أولاً - باستخدام dateAdded)
                 items.sort((a, b) {
                   final dateA = a.dateAdded?.toDate().millisecondsSinceEpoch ?? 0;
                   final dateB = b.dateAdded?.toDate().millisecondsSinceEpoch ?? 0;
@@ -242,7 +313,8 @@ class _InventoryPageState extends State<InventoryPage> {
                   itemBuilder: (context, index) {
                     return _ItemCard(
                       item: items[index],
-                      isAdmin: _isAdmin,
+                      // 🔴 التعديل الثالث (جزء 1): تمرير _canEdit بدلاً من _isAdmin إلى البطاقة
+                      canEdit: _canEdit, 
                       onDelete: () => deleteItem(context, items[index].id),
                       onEdit: () => _navigateToAddEditItem(item: items[index]),
                     );
@@ -254,8 +326,9 @@ class _InventoryPageState extends State<InventoryPage> {
         ],
       ),
 
-      // زر الإضافة العائم يظهر فقط للمشرفين
-      floatingActionButton: _isAdmin
+      // زر الإضافة العائم يظهر فقط للمشرفين/المديرين
+      // 🔴 التعديل الرابع: التحكم بظهور الزر باستخدام _canEdit
+      floatingActionButton: _canEdit 
           ? FloatingActionButton.extended(
               onPressed: () => _navigateToAddEditItem(),
               icon: const Icon(Icons.add),
@@ -311,13 +384,14 @@ class _InventoryPageState extends State<InventoryPage> {
 
 class _ItemCard extends StatelessWidget {
   final GeneralItem item;
-  final bool isAdmin;
+  // 🔴 التعديل الثالث (جزء 2): تغيير اسم الخاصية لاستقبال صلاحية التحرير المشتركة
+  final bool canEdit;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
 
   const _ItemCard({
     required this.item,
-    required this.isAdmin,
+    required this.canEdit, // 🔴 استخدام الاسم الجديد
     required this.onDelete,
     required this.onEdit,
     super.key,
@@ -326,7 +400,7 @@ class _ItemCard extends StatelessWidget {
   // دالة مساعدة لربط القيمة المخزنة في قاعدة البيانات (DB Value) باسم الموقع المعروض
   String _getLocationDisplayName(String dbValue) {
     if (dbValue == 'Shelf 1') return 'الرف 1 (متجر الكنيسة)';
-    if (dbValue == 'Storage Room') return 'غرفة التخزين';
+    if (dbValue == 'Storage Room') return 'المكتبه';
     return dbValue;
   }
 
@@ -465,14 +539,14 @@ class _ItemCard extends StatelessWidget {
                 ),
                 
                 // الكمية المتاحة
-                Text(
-                  'المخزون: ${item.stockQuantity} وحدة',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.primaryBlue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                // Text(
+                //   'المخزون: ${item.stockQuantity} وحدة',
+                //   style: const TextStyle(
+                //     fontSize: 14,
+                //     color: AppColors.primaryBlue,
+                //     fontWeight: FontWeight.bold,
+                //   ),
+                // ),
               ].reversed.toList(),
             ),
              Padding(
@@ -489,7 +563,8 @@ class _ItemCard extends StatelessWidget {
 
 
             // أزرار المشرف (تعديل وحذف)
-            if (isAdmin)
+            // 🔴 التعديل الثالث (جزء 3): التحكم بظهور الأزرار باستخدام canEdit
+            if (canEdit) 
               Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: Row(
@@ -558,14 +633,14 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
   // دالة مساعدة لربط اسم الموقع المعروض (Display Name) بالقيمة المخزنة في قاعدة البيانات (DB Value)
   String _getLocationDbValue(String displayName) {
     if (displayName == 'الرف 1 (متجر الكنيسة)') return 'Shelf 1';
-    if (displayName == 'غرفة التخزين') return 'Storage Room';
+    if (displayName == 'المكتبه') return 'Storage Room';
     return 'Shelf 1';
   }
   
   // دالة مساعدة لربط القيمة المخزنة في قاعدة البيانات (DB Value) باسم الموقع المعروض
   String _getLocationDisplayName(String dbValue) {
     if (dbValue == 'Shelf 1') return 'الرف 1 (متجر الكنيسة)';
-    if (dbValue == 'Storage Room') return 'غرفة التخزين';
+    if (dbValue == 'Storage Room') return 'المكتبه';
     return widget.locations[0];
   }
 
@@ -614,14 +689,17 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
       return;
     }
 
-    if (FirebaseAuth.instance.currentUser == null) {
+    // 🔴 التحقق من المصادقة (إجراء أمان إضافي)
+    final currentUser = FirebaseAuth.instance.currentUser;
+    // يجب أن يكون المستخدم موجوداً وألا يكون ضيفاً (لضمان كونه مشرفاً فعلياً قبل محاولة الإرسال)
+    if (currentUser == null || currentUser.isAnonymous) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('خطأ: يجب أن تكون مصادقاً عليه للنشر.')),
+            const SnackBar(content: Text('خطأ: يجب أن تكون مشرفاً ومصادقاً عليه للنشر.')),
           );
         }
         return;
-      }
+    }
       
     setState(() { _isLoading = true; });
 
@@ -648,6 +726,7 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
         }
       } else {
         // تعديل عنصر موجود
+        // لا نحدث dateAdded عند التعديل
         await widget.itemsCollection.doc(widget.item!.id).update(itemData);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -702,11 +781,17 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
           return 'هذا الحقل مطلوب.';
         }
         if (keyboardType == TextInputType.number || keyboardType == TextInputType.phone) {
-          if (double.tryParse(value) == null && keyboardType != TextInputType.number) {
-             return 'يجب أن تكون القيمة رقماً صحيحاً أو عشرياً.';
+          // التحقق من الرقم العشري أو الصحيح للسعر
+          if (keyboardType == const TextInputType.numberWithOptions(decimal: true)) {
+             if (double.tryParse(value) == null) {
+                return 'يجب أن تكون القيمة رقماً عشرياً صحيحاً.';
+             }
           }
-          if (int.tryParse(value) == null && keyboardType == TextInputType.number) {
-             return 'يجب أن تكون القيمة عدداً صحيحاً.';
+          // التحقق من الرقم الصحيح للكمية
+          if (keyboardType == TextInputType.number) {
+             if (int.tryParse(value) == null) {
+                return 'يجب أن تكون القيمة عدداً صحيحاً.';
+             }
           }
         }
         return null;
@@ -838,7 +923,10 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(color: AppColors.secondaryGold, strokeWidth: 3),
+                        child: CircularProgressIndicator(
+                          color: AppColors.secondaryGold,
+                          strokeWidth: 2.0,
+                        ),
                       )
                     : Text(
                         isEditing ? 'حفظ التعديلات' : 'إضافة العنصر',

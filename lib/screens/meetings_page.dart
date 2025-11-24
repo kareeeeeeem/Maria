@@ -134,28 +134,32 @@ class _MeetingsPageState extends State<MeetingsPage> {
   // =========================================================
   // وظائف Firebase
   // =========================================================
+// دالة فحص صلاحيات المستخدم في Firestore
+Future<void> _checkAdminStatus(String uid) async {
+  try {
+    final doc = await _db.collection('users').doc(uid).get();
+    final data = doc.data();
 
-  // الدالة الجديدة: فحص حقل isAdmin في Firestore
-  Future<void> _checkAdminStatus(String uid) async {
-    try {
-      final doc = await _db.collection('users').doc(uid).get();
-      
-      final bool isAdmin = doc.data()?['isAdmin'] ?? false;
-      
-      if (mounted) {
-        setState(() {
-          _isAdminStatus = isAdmin;
-        });
-        print('User ID $uid Admin Status: $_isAdminStatus');
-      }
-    } catch (e) {
-      print('Failed to check admin status for $uid: $e');
-      if (mounted) {
-        setState(() { _isAdminStatus = false; }); 
-      }
+    // 💡 التعديل هنا: نقرأ حالة الأدمن وحالة "الراعي"
+    final bool isAdmin = data?['isAdmin'] ?? false;
+    final bool isRector = data?['IsRectorofMeetings'] ?? false; 
+    
+    // نحدد ما إذا كان يمتلك أي صلاحية تعديل
+    final bool canEdit = isAdmin || isRector; 
+
+    if (mounted) {
+      setState(() {
+        // نستخدم هذا المتغير لتحديد إمكانية التعديل
+        _isAdminStatus = canEdit; 
+      });
+    }
+  } catch (e) {
+    print('Failed to check permissions for $uid: $e');
+    if (mounted) {
+      setState(() { _isAdminStatus = false; });
     }
   }
-
+}
   Future<void> _initializeFirebaseAndListen() async {
     try {
       _db = FirebaseFirestore.instance; 

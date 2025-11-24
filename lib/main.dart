@@ -93,7 +93,7 @@ Future<void> _initializeOneSignal() async {
     // يمكنك هنا إضافة منطق التوجيه إلى شاشة الإشعارات
   });
 
-  print("✅ OneSignal initialized successfully!");
+  print("✅✅✅✅✅ OneSignal initialized successfully!");
 }
 
 // =========================================================================

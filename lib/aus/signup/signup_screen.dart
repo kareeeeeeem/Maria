@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart'; 
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 // =========================================================================
@@ -82,6 +83,13 @@ Future<void> _signInWithApple() async {
     final user = userCredential.user;
 
     if (user != null) {
+
+      final String? idToken = await user.getIdToken();
+    if (idToken != null) {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_token', idToken); 
+        print("✅ تم حفظ التوكن (Apple) في SharedPreferences بنجاح.");
+    }
       // تحقق من وجود المستخدم في Firestore
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
@@ -99,7 +107,7 @@ Future<void> _signInWithApple() async {
 
       if (mounted) {
         // ✅ التوجيه باستخدام اسم المسار الثابت
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
     }
   } catch (e) {
@@ -140,6 +148,12 @@ Future<void> _signInWithGoogle() async {
     final user = userCredential.user;
 
     if (user != null) {
+      final String? idToken = await user.getIdToken();
+    if (idToken != null) {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_token', idToken); // 👈 **هنا يتم الحفظ**
+        print("✅ تم حفظ التوكن (Google) في SharedPreferences بنجاح.");
+    }
       // حفظ بيانات المستخدم في Firestore لو جديد
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
@@ -153,10 +167,10 @@ Future<void> _signInWithGoogle() async {
         });
       }
 
-      // التوجيه إلى HomePage بعد التسجيل أو تسجيل الدخول
+      // التوجيه إلى MemberDataEntryScreenPage بعد التسجيل أو تسجيل الدخول
       if (mounted) {
         // ✅ التوجيه باستخدام اسم المسار الثابت
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
     }
 
@@ -196,6 +210,14 @@ Future<void> _signInWithFacebook() async {
       final user = userCredential.user;
 
       if (user != null) {
+
+
+        final String? idToken = await user.getIdToken();
+    if (idToken != null) {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_token', idToken); 
+        print("✅ تم حفظ التوكن (Facebook) في SharedPreferences بنجاح.");
+    }
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -213,7 +235,7 @@ Future<void> _signInWithFacebook() async {
 
         if (mounted) {
           // ✅ التوجيه باستخدام اسم المسار الثابت
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
         }
       }
     } else if (result.status == LoginStatus.cancelled) {
@@ -273,7 +295,17 @@ Future<void> _signInWithFacebook() async {
             'isAdmin': false, 
             'createdAt': FieldValue.serverTimestamp(),
           });
+
+
+          final String? idToken = await user.getIdToken();
+    if (idToken != null) {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_token', idToken); // 👈 **هنا يتم الحفظ**
+        print("✅ تم حفظ التوكن في SharedPreferences بنجاح.");
+    }
           
+
+
           // Optional Step: Update User's Display Name
           await user.updateDisplayName(_nameController.text.trim());
       }
@@ -281,7 +313,7 @@ Future<void> _signInWithFacebook() async {
 
       // Authentication successful, navigate to the main screen
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
       
     } on FirebaseAuthException catch (e) {

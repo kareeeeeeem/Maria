@@ -1,11 +1,14 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:churchapp/aus/signup/signup_screen.dart';
-import 'package:churchapp/screens/home_page.dart';
+import 'package:churchapp/screens/homepage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart'; 
+import 'package:shared_preferences/shared_preferences.dart'; // 👈 1. تم إضافة الاستيراد
 
 // =========================================================================
 // 1. Colors and Utility Components (Royal/Dark Theme)
@@ -54,7 +57,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
 
 // =========================================================================
-  // . apple Logic (لم يتم المساس به)
+  // . apple Logic (تم التعديل: حفظ التوكن)
   // =========================================================================
 Future<void> _signInWithApple() async {
   setState(() => _isLoading = true);
@@ -73,6 +76,14 @@ Future<void> _signInWithApple() async {
     final user = userCredential.user;
 
     if (user != null) {
+      // ✅ حفظ التوكن في SharedPreferences
+      final String? idToken = await user.getIdToken();
+      if (idToken != null) {
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_token', idToken); 
+          print("✅ تم حفظ التوكن (Apple) في SharedPreferences بنجاح.");
+      }
+      
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       if (!userDoc.exists) {
@@ -104,7 +115,7 @@ Future<void> _signInWithApple() async {
 }
 
 // =========================================================================
-  // . googel Logic (لم يتم المساس به)
+  // . googel Logic (تم التعديل: حفظ التوكن)
   // =========================================================================
 
 
@@ -134,6 +145,14 @@ Future<void> _signInWithGoogle() async {
     final user = userCredential.user;
 
     if (user != null) {
+      // ✅ حفظ التوكن في SharedPreferences
+      final String? idToken = await user.getIdToken();
+      if (idToken != null) {
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_token', idToken); 
+          print("✅ تم حفظ التوكن (Google) في SharedPreferences بنجاح.");
+      }
+      
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       if (!userDoc.exists) {
@@ -167,7 +186,7 @@ Future<void> _signInWithGoogle() async {
 
   
 // =========================================================================
-  // 3. facebooklogin Logic (لم يتم المساس به)
+  // 3. facebooklogin Logic (تم التعديل: حفظ التوكن)
   // =========================================================================
 Future<void> _signInWithFacebook() async {
   setState(() {
@@ -192,6 +211,14 @@ Future<void> _signInWithFacebook() async {
       final user = userCredential.user;
 
       if (user != null) {
+         // ✅ حفظ التوكن في SharedPreferences
+        final String? idToken = await user.getIdToken();
+        if (idToken != null) {
+            final SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_token', idToken); 
+            print("✅ تم حفظ التوكن (Facebook) في SharedPreferences بنجاح.");
+        }
+        
         // 🔹 تحقق إذا كان المستخدم موجود في Firestore
         final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
@@ -236,7 +263,7 @@ Future<void> _signInWithFacebook() async {
   }
 }
  // =========================================================================
-  // 3. Password Reset Logic (لم يتم المساس به)
+  // 3. Password Reset Logic
   // =========================================================================
 
   Future<void> _resetPassword(String email) async {
@@ -278,7 +305,7 @@ Future<void> _signInWithFacebook() async {
     }
   }
 
-  // دالة مساعدة لعرض مربع حوار نسيان كلمة المرور (تم تعديل ألوانها فقط)
+  // دالة مساعدة لعرض مربع حوار نسيان كلمة المرور 
   void _showForgotPasswordDialog(BuildContext context) {
     final TextEditingController emailResetController = TextEditingController();
     final dialogFormKey = GlobalKey<FormState>();
@@ -341,7 +368,7 @@ Future<void> _signInWithFacebook() async {
   }
 
   // =========================================================================
-  // 4. Authentication Logic (لم يتم المساس به)
+  // 4. Authentication Logic (تم التعديل: حفظ التوكن)
   // =========================================================================
 
   // Sign In function 
@@ -365,6 +392,14 @@ Future<void> _signInWithFacebook() async {
       final User? user = userCredential.user;
 
       if (user != null) {
+          // ✅ حفظ التوكن في SharedPreferences بعد نجاح الدخول
+          final String? idToken = await user.getIdToken();
+          if (idToken != null) {
+              final SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_token', idToken); 
+              print("✅ تم حفظ التوكن (Email Login) في SharedPreferences بنجاح.");
+          }
+        
           // تحديث/دمج بيانات المستخدم في Firestore
           await _firestore.collection('users').doc(user.uid).set({
             'email': user.email!.toLowerCase(), 
@@ -410,7 +445,7 @@ Future<void> _signInWithFacebook() async {
   }
 
   // =========================================================================
-  // 5. Build Method (UI) - تم التعديل على العناصر لتتوافق مع التصميم الجديد
+  // 5. Build Method (UI)
   // =========================================================================
 
   @override

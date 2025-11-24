@@ -24,7 +24,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   List pageList = [
      {
       "title":
-          "فَرِحْتُ بِالْقَائِلِينَ لِي\nإِلَى بَيْتِ الرَّبِّ نَذْهَبُ",
+          "فَرِحْتُ بِالْقَائِلِينَ لِي إِلَى \nبَيْتِ الرَّبِّ نَذْهَبُ",
       "lottie_asset": "assets/lottie/Church.json",
       "color": const Color.fromARGB(255, 85, 165, 231),
     },
@@ -33,7 +33,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       "title":
           "سِرَاجٌ لِرِجْلِي كَلاَمُكَ\nوَنُورٌ لِسَبِيلِي",
       "lottie_asset": "assets/lottie/Dove.json",
-      "color": const Color.fromARGB(255, 91, 128, 154),
+       "color": const Color.fromARGB(255, 183, 163, 104), // لون خلفية الصفحة الثانية (Secondary Color)
     },
     {
       "title":

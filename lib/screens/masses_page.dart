@@ -124,11 +124,13 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
   late FirebaseAuth _auth;
   String? _userId;
   bool _isLoading = true;
+  // هذا المتغير سيخزن النتيجة النهائية لـ (isAdmin OR IsRector...)
   bool _isAdminStatus = false; 
 
   List<MassesSchedule> _schedules = [];
   late TabController _tabController;
 
+  // هذا الـ Getter يستخدم النتيجة الموحدة للحقلين
   bool get _isAdmin => _userId != null && _isAdminStatus;
   
   // مفتاح لنموذج الإضافة/التعديل
@@ -147,19 +149,27 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  // دالة فحص حقل isAdmin في Firestore
+  // دالة فحص حقل isAdmin و IsRectorofMassesandVespers في Firestore
   Future<void> _checkAdminStatus(String uid) async {
     try {
       final doc = await _db.collection('users').doc(uid).get();
-      final bool isAdmin = doc.data()?['isAdmin'] ?? false;
+      final data = doc.data();
+
+      // 💡 التعديل هنا: نقرأ حالة الأدمن وحالة "الراعي"
+      final bool isAdmin = data?['isAdmin'] ?? false;
+      final bool isRector = data?['IsRectorofMassesandVespers'] ?? false; 
       
+      // نحدد ما إذا كان يمتلك أي صلاحية تعديل (Admin OR Rector)
+      final bool canEdit = isAdmin || isRector; 
+
       if (mounted) {
         setState(() {
-          _isAdminStatus = isAdmin;
+          // نستخدم هذا المتغير لتحديد إمكانية التعديل
+          _isAdminStatus = canEdit; 
         });
       }
     } catch (e) {
-      print('Failed to check admin status for $uid: $e');
+      print('Failed to check permissions for $uid: $e');
       if (mounted) {
         setState(() { _isAdminStatus = false; });
       }
@@ -229,7 +239,8 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
   }
 
   void _deleteSchedule(String id) async {
-    if (!_isAdmin) return;
+    // التحقق من الصلاحية يعتمد الآن على _isAdmin الذي تم تحديث منطق الصلاحيات به
+    if (!_isAdmin) return; 
     try {
       await _schedulesCollection.doc(id).delete();
       if (mounted) {
@@ -249,6 +260,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
 
   // دالة الإضافة/التعديل (تم تطبيق الألوان عليها)
   void _showScheduleForm({MassesSchedule? schedule}) {
+    // التحقق من الصلاحية يعتمد الآن على _isAdmin الذي تم تحديث منطق الصلاحيات به
     if (!_isAdmin) return;
     
     // القيم الأولية للنموذج
@@ -462,8 +474,10 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
     return Scaffold(
       backgroundColor: AppColors.backgroundBeige, // ✅ تم تطبيق الخلفية البيج
       appBar: AppBar(
-        title:  Text('       مواعيد القداسات والعشيات', 
-                style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold)),
+        title: const Text('القداسات والعشيات', 
+        style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold)),       
+
+         centerTitle: true,
         backgroundColor: AppColors.primaryMaroon,
         elevation: 8,
         shadowColor: AppColors.primaryMaroon.withOpacity(0.5),
@@ -484,7 +498,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
         ),
       ),
       
-      floatingActionButton: _isAdmin
+      floatingActionButton: _isAdmin // يعتمد على منطق (Admin OR Rector)
           ? FloatingActionButton.extended(
               onPressed: () => _showScheduleForm(),
               label: const Text('إضافة موعد', style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold)),
@@ -500,7 +514,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
         children: [
           _ScheduleList(
             schedules: _schedules.where((s) => s.type == 'Mass').toList(),
-            isAdmin: _isAdmin,
+            isAdmin: _isAdmin, // يعتمد على منطق (Admin OR Rector)
             onEdit: _showScheduleForm,
             onDelete: _deleteSchedule,
             emptyMessage: _isAdmin
@@ -509,7 +523,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
           ),
           _ScheduleList(
             schedules: _schedules.where((s) => s.type == 'Vesper').toList(),
-            isAdmin: _isAdmin,
+            isAdmin: _isAdmin, // يعتمد على منطق (Admin OR Rector)
             onEdit: _showScheduleForm,
             onDelete: _deleteSchedule,
             emptyMessage: _isAdmin
@@ -621,7 +635,8 @@ class _ScheduleList extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: isAdmin
+              // يتم تفعيل التعديل فقط إذا كانت لديه صلاحية (Admin OR Rector)
+              onTap: isAdmin 
                   ? () => onEdit(schedule: schedule)
                   : () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -688,7 +703,7 @@ class _ScheduleList extends StatelessWidget {
                     ),
 
                     // 3. العرض المشروط لأزرار الإدارة
-                    if (isAdmin)
+                    if (isAdmin) // يعتمد على منطق (Admin OR Rector)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [

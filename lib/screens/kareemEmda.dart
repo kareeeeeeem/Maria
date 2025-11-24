@@ -157,6 +157,9 @@ class ProfileSkeleton extends StatelessWidget {
 // 3. HowUsView - التصميم الجديد المبهر + Firebase
 // =========================================================================
 class HowUsView extends StatefulWidget {
+    static const String routeName = "/HowUsViewPage"; 
+
+  
   const HowUsView({super.key});
 
   @override
@@ -165,19 +168,30 @@ class HowUsView extends StatefulWidget {
 
 class _HowUsViewState extends State<HowUsView> with SingleTickerProviderStateMixin {
   
-  // 🔥 جلب البيانات من Firestore
-  Future<DeveloperProfile?> _fetchProfile() async {
-    try {
-      // ⚠️ يجب التأكد من أن المسار صحيح (المجموعة هي 'developer_info' ويحتوي على مستند واحد فقط)
-      final snapshot = await FirebaseFirestore.instance.collection('developer_info').limit(1).get();
-      
-      if (snapshot.docs.isNotEmpty) {
-        return DeveloperProfile.fromFirestore(snapshot.docs.first.data());
-      }
+  // HowUsView.dart - داخل الكلاس _HowUsViewState
+
+// 🔥 جلب البيانات من Firestore
+Future<DeveloperProfile?> _fetchProfile() async {
+  try {
+    // 💡 التعديل: نقوم الآن بقراءة الوثيقة مباشرة، بدلاً من مجموعة فرعية غير موجودة.
+    final docSnapshot = await FirebaseFirestore.instance
+        .collection('developer_info')
+        .doc('profile') // ← قراءة الوثيقة مباشرة
+        .get();
+        
+    print('Path: developer_info/profile');
+    print('📦 Document Exists: ${docSnapshot.exists}');
+    
+    if (docSnapshot.exists && docSnapshot.data() != null) {
+      final data = docSnapshot.data()!;
+      print('✅ Data: $data');
+      return DeveloperProfile.fromFirestore(data);
+    } else {
+      print('❌ الوثيقة developer_info/profile غير موجودة أو فارغة.');
       // في حالة عدم وجود بيانات، ارجع بقيمة وهمية
       return DeveloperProfile(
         name: 'Default User', 
-        title: 'No Data Found', 
+        title: 'No Data Found (Check Path)', 
         imageUrl: 'https://placehold.co/120x120/555555/FFFFFF?text=KE',
         email: 'default@example.com', 
         phone: '1234567890', 
@@ -186,13 +200,14 @@ class _HowUsViewState extends State<HowUsView> with SingleTickerProviderStateMix
         facebook: '', 
         instagram: ''
       );
-      
-    } catch (e) {
-      print("Firebase Fetch Error: $e");
-      // في حالة الخطأ، ارجع بقيمة وهمية
-      return null;
     }
+      
+  } catch (e) {
+    print("Firebase Fetch Error: $e");
+    // في حالة الخطأ، ارجع بقيمة وهمية
+    return null;
   }
+}
 
   // متحكم الأنيميشن
   late AnimationController _animationController;
@@ -336,7 +351,10 @@ class _HowUsViewState extends State<HowUsView> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final mediaQueryData = MediaQuery.of(context);
     final mediaSize = mediaQueryData.size;
-    
+    print('✅ We reached the HowUsView build method!');
+    print('🔥 Trying to fetch from Firestore...');
+print('Path: developer_info/profile/profile');
+
     // 🔥 استخدام FutureBuilder لجلب البيانات مرة واحدة من Firestore
     return FutureBuilder<DeveloperProfile?>(
       future: _fetchProfile(),

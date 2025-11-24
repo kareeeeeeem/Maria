@@ -6,7 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart'; 
 
 // =========================================================
-// I. نموذج البيانات والثوابت (تم التحديث لباليتة الحجر والذهب)
+// I. نموذج البيانات والثوابت 
 // =========================================================
 
 class AppColors {
@@ -23,7 +23,7 @@ class AppColors {
   static const Color alertRed = Color(0xFFB71C1C); // أحمر داكن للإنذار
 }
 
-// 2. نموذج بيانات الحدث/الفعالية (لم يتم تعديلها)
+// 2. نموذج بيانات الحدث/الفعالية
 class ChurchEvent {
   final String id;
   final String title;
@@ -94,9 +94,17 @@ class ActivitiesPage extends StatefulWidget {
 class _ActivitiesPageState extends State<ActivitiesPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+   // حالة المشرف
   bool _isAdmin = false; 
+  // حالة مدير الاجتماعات/الأنشطة
+  bool _isMeetingsManager = false;
+  // حالة التحميل الأولي
+  bool _isLoading = true; 
+  
   bool _isLocaleInitialized = false; 
+  
+  // خاصية مجمعة للتحقق من صلاحية التعديل (Admin أو Manager)
+  bool get _canEdit => _isAdmin || _isMeetingsManager; // 🟢 تم استخدام هذه الخاصية الآن في واجهة المستخدم
 
   final String appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
   late final CollectionReference _eventsCollection;
@@ -105,18 +113,62 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   void initState() {
     super.initState();
     
+    // إعداد مسار المجموعة
     _eventsCollection = _firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('events');
     
     _initializeLocale();
-
-    _auth.authStateChanges().listen((User? user) {
+    _setupAuthListener(); // إعداد مستمع المصادقة وفحص الدور
+  }
+  
+  // دالة فحص حقل isAdmin و isMeetingsManager في Firestore
+    Future<void> _checkAdminStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      final data = doc.data();
+      
+      // القراءة الآمنة لحقلي isAdmin و isMeetingsManager
+      final bool isAdmin = data?['isAdmin'] ?? false;
+      final bool isMeetingsManager = data?['isMeetingsManager'] ?? false; 
+      
       if (mounted) {
         setState(() {
-          _isAdmin = user != null;
+          _isAdmin = isAdmin;
+          _isMeetingsManager = isMeetingsManager; 
+          _isLoading = false; 
         });
+      }
+      debugPrint('User $uid status: isAdmin=$_isAdmin, isMeetingsManager=$_isMeetingsManager, Can Edit=$_canEdit');
+    } catch (e) {
+      debugPrint('Admin/Manager Status Check Error: $e');
+      if (mounted) {
+        setState(() {
+          _isAdmin = false;
+          _isMeetingsManager = false; 
+          _isLoading = false; 
+        });
+      }
+    }
+  }
+  
+  // دالة إعداد مستمع المصادقة
+  void _setupAuthListener() {
+    _auth.authStateChanges().listen((User? user) {
+      if (user != null) {
+        // إذا كان المستخدم مسجلاً الدخول، تحقق من صلاحياته
+        _checkAdminStatus(user.uid);
+      } else {
+        // إذا لم يكن مسجلاً الدخول، إبقِ الصلاحيات على False
+        if (mounted) {
+          setState(() {
+            _isAdmin = false;
+            _isMeetingsManager = false; 
+            _isLoading = false; 
+          });
+        }
       }
     });
   }
+
 
   Future<void> _initializeLocale() async {
     try {
@@ -133,9 +185,10 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   void _navigateToAddEvent() {
-    if (!_isAdmin) {
+    // 🟢 التحقق باستخدام _canEdit بدلاً من _isAdmin
+    if (!_canEdit) { 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب أن تكون مصادقاً عليه للقيام بهذه العملية.')),
+        const SnackBar(content: Text('يجب أن تكون مصادقاً عليه كمسؤول أو مدير للقيام بهذه العملية.')),
       );
       return;
     }
@@ -149,7 +202,8 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLocaleInitialized) {
+    // إظهار شاشة التحميل إذا لم يتم تهيئة اللغة أو لم يتم الانتهاء من فحص الأدمن
+    if (!_isLocaleInitialized || _isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.backgroundBeige, // تم التحديث
         body: Center(child: CircularProgressIndicator(color: AppColors.primaryStone)), // تم التحديث
@@ -173,9 +227,11 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
         centerTitle: true,
       ),
       
-      body: _EventsList(eventsCollection: _eventsCollection, isAdmin: _isAdmin),
+      // 🟢 تمرير _canEdit إلى قائمة الأحداث
+      body: _EventsList(eventsCollection: _eventsCollection, canEdit: _canEdit),
 
-      floatingActionButton: _isAdmin
+      // 🟢 زر إضافة الفعالية يظهر لمن لديه صلاحية التعديل
+      floatingActionButton: _canEdit
           ? FloatingActionButton.extended(
               onPressed: _navigateToAddEvent,
               label: const Text('إضافة فعالية', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
@@ -197,8 +253,8 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
 
 class _EventsList extends StatelessWidget {
   final CollectionReference eventsCollection;
-  final bool isAdmin;
-  const _EventsList({required this.eventsCollection, required this.isAdmin});
+  final bool canEdit; // 🟢 تم تغييرها إلى canEdit
+  const _EventsList({required this.eventsCollection, required this.canEdit}); // 🟢 تم تغييرها إلى canEdit
 
   Future<void> _deleteEvent(BuildContext context, String eventId) async {
     final bool? confirm = await showDialog<bool>(
@@ -243,7 +299,8 @@ class _EventsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: eventsCollection.orderBy('date', descending: false).snapshots(),
+      // طلب البيانات فقط، والترتيب سيتم بعد الجلب
+      stream: eventsCollection.snapshots(), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.primaryStone)); // لون الحجر
@@ -280,6 +337,10 @@ class _EventsList extends StatelessWidget {
             return null;
           }
         }).whereType<ChurchEvent>().toList(); 
+        
+        // الترتيب حسب التاريخ في الذاكرة (لتجنب مشاكل الـ Index في Firestore)
+        events.sort((a, b) => a.date.compareTo(b.date));
+
 
         return ListView.builder(
           padding: const EdgeInsets.all(12.0),
@@ -287,7 +348,8 @@ class _EventsList extends StatelessWidget {
           itemBuilder: (context, index) {
             return _EventCard(
               event: events[index],
-              isAdmin: isAdmin, 
+              canEdit: canEdit, // 🟢 تمرير صلاحية التعديل
+              // زر الحذف يظهر لمن لديه صلاحية التعديل
               onDelete: () => _deleteEvent(context, events[index].id),
             );
           },
@@ -299,10 +361,10 @@ class _EventsList extends StatelessWidget {
 
 class _EventCard extends StatelessWidget {
   final ChurchEvent event;
-  final bool isAdmin;
+  final bool canEdit; // 🟢 تم تغييرها إلى canEdit
   final VoidCallback onDelete;
 
-  const _EventCard({required this.event, required this.isAdmin, required this.onDelete});
+  const _EventCard({required this.event, required this.canEdit, required this.onDelete}); // 🟢 تم تغييرها إلى canEdit
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Padding(
@@ -360,7 +422,8 @@ class _EventCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (isAdmin && !isPastEvent)
+                // 🟢 أيقونة الحذف تظهر لمن لديه صلاحية التعديل
+                if (canEdit && !isPastEvent)
                   IconButton(
                     icon: const Icon(Icons.delete_forever, color: AppColors.alertRed, size: 28),
                     onPressed: onDelete,

@@ -21,7 +21,7 @@ class _AdminNotificationPageState extends State<AdminNotificationPage> {
 
   // TODO: Replace with your OneSignal keys
   final String oneSignalAppId = 'a3d9efe8-e736-45fc-98fa-2d4a9d4051c5';
-  final String oneSignalApiKey = 'os_v2_app_upm672hhgzc7zgh2fvfj2qcryvyiro3ij5ge2vfa3ylfswgjigdyl5r4pmr56x2inpepdwyacwvo7awrkoicatul24oo7lnaw7swjza';
+  final String oneSignalApiKey = 'os_v2_app_upm672hhgzc7zgh2fvfj2qcryw5vnlckiksuwov3vicmrhfcuatv2mubwcfypopiy5skw2n5rli3tfwxibdtlcsnv2qmo6kvcc6zdxa';
 
 
 

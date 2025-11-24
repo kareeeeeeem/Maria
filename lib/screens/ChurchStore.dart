@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,7 +14,6 @@ class AppColors {
   static const Color primaryStone = Color(0xFF4E342E); 
   static const Color accentGold = Color(0xFFFFD700); 
   static const Color backgroundBeige = Color(0xFFFFF8F0); 
-  
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
@@ -77,7 +78,7 @@ class StoreProduct {
 }
 
 // =========================================================
-// II. الصفحة الرئيسية (StorePage) - منطق Store Mapping محسن
+// II. الصفحة الرئيسية (StorePage) - منطق Store Mapping محسن ومنطق الأدمن
 // =========================================================
 
 class StorePage extends StatefulWidget {
@@ -92,7 +93,9 @@ class _StorePageState extends State<StorePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  bool _isAdmin = false; 
+  // 💡 التعديل 1: إعادة تسمية المتغير ليعكس صلاحية الإدارة في المتجر
+  bool _canManageStore = false; 
+  bool _isLoading = true; // حالة تحميل مبدئية
   
   final String appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
   late final CollectionReference _productsCollection;
@@ -101,6 +104,8 @@ class _StorePageState extends State<StorePage> {
   final List<String> _stores = _storeMapping.keys.toList();
   
   late String _currentStoreFilter;
+  bool _isAdminStatus = false; // سنعيد تسميتها لاحقاً
+
 
   // دالة مساعدة لربط اسم المتجر المعروض (Display Name) بالقيمة المخزنة في قاعدة البيانات (DB Value)
   String _getStoreDbValue(String displayName) {
@@ -116,7 +121,6 @@ class _StorePageState extends State<StorePage> {
     return entry.key;
   }
 
-
   @override
   void initState() {
     super.initState();
@@ -130,17 +134,66 @@ class _StorePageState extends State<StorePage> {
         .doc('data')
         .collection('store_products');
     
-    _auth.authStateChanges().listen((User? user) {
-      if (mounted) {
-        setState(() {
-          _isAdmin = user != null;
-        });
-      }
-    });
+    _initializeAuthAndAdminCheck();
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
   }
 
+  // 💡 التعديل 2: تحديث دالة فحص حالة الأدمن للتحقق حصرياً من isStoreManager
+  Future<void> _checkAdminStatus(String uid) async {
+    try {
+      // التحقق من صلاحية المشرف في مجموعة 'users'
+      final doc = await _firestore.collection('users').doc(uid).get();
+      final data = doc.data();
+      
+      // الصلاحية تعتمد حصرياً على كون المستخدم isStoreManager: true
+      final bool isStoreManager = data?['isStoreManager'] ?? false;
+      
+      // الآن، سواء كان المستخدم أدمن عام أم لا، الصلاحية للكتابة مرتبطة بدور مدير المتجر
+      final bool canManage = isStoreManager; 
+      
+      if (mounted) {
+        setState(() {
+          _canManageStore = canManage;
+          _isLoading = false; 
+        });
+      }
+    } catch (e) {
+      print('Failed to check management status for $uid: $e');
+      if (mounted) {
+        setState(() { 
+          _canManageStore = false; 
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _initializeAuthAndAdminCheck() {
+    _auth.authStateChanges().listen((User? user) async {
+      if (mounted) {
+        if (user != null) {
+          // إذا كان المستخدم مصادق عليه، تحقق من حالة الأدمن
+          await _checkAdminStatus(user.uid);
+        } else {
+          // إذا لم يكن مصادق عليه (مستخدم ضيف أو لم يسجل دخول)، ليس مشرفاً للمتجر
+          setState(() {
+            _canManageStore = false;
+            _isLoading = false;
+          });
+          // محاولة تسجيل الدخول كضيف (للسماح بالقراءة)
+          try {
+             await _auth.signInAnonymously(); 
+          } catch (e) {
+             print('Anonymous Auth Failed: $e');
+          }
+        }
+      }
+    });
+  }
+
   Future<void> deleteProduct(BuildContext context, String productId) async {
+    // 💡 التعديل 3: التحقق من _canManageStore
+    if (!_canManageStore) return; // حماية إضافية
     try {
       await _productsCollection.doc(productId).delete();
       if (context.mounted) {
@@ -159,9 +212,10 @@ class _StorePageState extends State<StorePage> {
   }
 
   void _navigateToAddEditProduct({StoreProduct? product}) {
-    if (!_isAdmin) {
+    // 💡 التعديل 4: التحقق من _canManageStore
+    if (!_canManageStore) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب أن تكون مشرفاً للقيام بهذه العملية.')),
+        const SnackBar(content: Text('يجب أن تكون مشرفاً مسئولاً عن المتجر للقيام بهذه العملية.')),
       );
       return;
     }
@@ -182,6 +236,15 @@ class _StorePageState extends State<StorePage> {
   @override
   Widget build(BuildContext context) {
     final String storeQueryValue = _getStoreDbValue(_currentStoreFilter);
+    
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundBeige,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryStone),
+        ),
+      );
+    }
     
     return Scaffold(
       backgroundColor: AppColors.backgroundBeige,
@@ -249,7 +312,8 @@ class _StorePageState extends State<StorePage> {
                   itemBuilder: (context, index) {
                     return _ProductCard(
                       product: products[index],
-                      isAdmin: _isAdmin,
+                      // 💡 التعديل 5: تمرير حالة الإدارة الجديدة
+                      canManageStore: _canManageStore, 
                       onDelete: () => deleteProduct(context, products[index].id),
                       onEdit: () => _navigateToAddEditProduct(product: products[index]),
                       getStoreDisplayName: _getStoreDisplayName, // تمرير الدالة
@@ -262,7 +326,8 @@ class _StorePageState extends State<StorePage> {
         ],
       ),
 
-      floatingActionButton: _isAdmin
+      // 💡 التعديل 6: عرض زر الإضافة فقط إذا كان _canManageStore صحيحاً
+      floatingActionButton: _canManageStore
           ? FloatingActionButton.extended(
               onPressed: () => _navigateToAddEditProduct(),
               icon: const Icon(Icons.add_shopping_cart),
@@ -315,14 +380,16 @@ class _StorePageState extends State<StorePage> {
 
 class _ProductCard extends StatelessWidget {
   final StoreProduct product;
-  final bool isAdmin;
+  // 💡 التعديل 7: تغيير اسم المتغير في Card
+  final bool canManageStore;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
   final String Function(String) getStoreDisplayName; // دالة جلب الاسم المعروض
 
   const _ProductCard({
     required this.product,
-    required this.isAdmin,
+    // 💡 التعديل 8: تغيير اسم المتغير في constructor
+    required this.canManageStore,
     required this.onDelete,
     required this.onEdit,
     required this.getStoreDisplayName,
@@ -488,7 +555,8 @@ class _ProductCard extends StatelessWidget {
               ].reversed.toList(),
             ),
 
-            if (isAdmin)
+            // 💡 التعديل 9: عرض الأزرار فقط إذا كان canManageStore صحيحًا
+            if (canManageStore)
               Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: Row(
@@ -587,6 +655,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       return;
     }
 
+    // شرط المصادقة قبل الإرسال (حماية إضافية)
     if (FirebaseAuth.instance.currentUser == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
