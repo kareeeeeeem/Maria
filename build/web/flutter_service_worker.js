@@ -3,11 +3,11 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"flutter_bootstrap.js": "006a280e16679e17edc4fb132e1cea47",
+const RESOURCES = {"flutter_bootstrap.js": "edd5515fcee42753ed0598ace6e4a211",
 "version.json": "00fc56898fa3ea2281661be48257e5f0",
 "index.html": "47e0ff490450ccfd745dccefaad8698b",
 "/": "47e0ff490450ccfd745dccefaad8698b",
-"main.dart.js": "2e0a6cec9618a72cce24582011268fcb",
+"main.dart.js": "dfba2e63218264de2f0dd76e13cbde00",
 "flutter.js": "888483df48293866f9f41d3d9274a779",
 "favicon.png": "fd6116526b0081a59e60344dedf175b7",
 "icons/Icon-192.png": "ec679de39a76211f25b96d4d7140bab0",
@@ -282,7 +282,7 @@ const RESOURCES = {"flutter_bootstrap.js": "006a280e16679e17edc4fb132e1cea47",
 "assets/packages/simple_circular_progress_bar/fonts/Roboto-Regular.ttf": "8a36205bd9b83e03af0591a004bc97f4",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "assets/AssetManifest.bin": "6e7cf7ad231c071e196af1b337b35d54",
-"assets/fonts/MaterialIcons-Regular.otf": "c17202e378f3c48bab1f994edaca4915",
+"assets/fonts/MaterialIcons-Regular.otf": "cf5abf30eb325bc6d67f6b578ecfef04",
 "assets/assets/images/eladra.png": "fe2763affa0931a0d3ad40d75c6e211a",
 "assets/assets/images/app_icon.png": "af56e1083a98b817c89e51425ac967a1",
 "assets/assets/images/church_background.png": "869a4ffeb54e8696975c1e4d1fd379e0",
