@@ -245,8 +245,10 @@ class _StartScreenState extends State<StartScreen>
 
   // 🚀 دالة الانتقال إلى الشاشة التالية
   void _navigateToOnBoarding() {
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const OnBoardingScreen()),
+        (Route<dynamic> route) => false,
+
     );
   }
 

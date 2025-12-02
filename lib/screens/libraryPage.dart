@@ -443,6 +443,7 @@ class _ItemCard extends StatelessWidget {
         ? '✅ متوفر بالمخزون' 
         : '❌ نفد المخزون';
         
+        
     final String locationDisplayName = _getLocationDisplayName(item.location);
 
     return Card(
@@ -549,17 +550,17 @@ class _ItemCard extends StatelessWidget {
                 // ),
               ].reversed.toList(),
             ),
-             Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  'الموقع: $locationDisplayName',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.right,
-                ),
-              ),
+            //  Padding(
+            //     padding: const EdgeInsets.only(top: 8.0),
+            //     child: Text(
+            //       'الموقع: $locationDisplayName',
+            //       style: const TextStyle(
+            //         fontSize: 14,
+            //         color: AppColors.textSecondary,
+            //       ),
+            //       textAlign: TextAlign.right,
+            //     ),
+            //   ),
 
 
             // أزرار المشرف (تعديل وحذف)

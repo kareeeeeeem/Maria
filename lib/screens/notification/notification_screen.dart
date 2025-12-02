@@ -9,7 +9,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter/services.dart';
 
-// 🔔 ValueNotifier المشترك (المصدر الرئيسي) - يُفضل أن يكون هذا التعريف في ملف عام
+// 🔔 ValueNotifier المشترك (المصدر الرئيسي) - يجب أن يكون هذا التعريف في ملف عام أو يتم استيراده
 final ValueNotifier<List<Map<String, dynamic>>> notificationsNotifier =
     ValueNotifier<List<Map<String, dynamic>>>([]);
 
@@ -31,9 +31,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _loadNotifications(); // يمكن إبقائها للتحميل الأولي
 
-    // يتم استدعاء المستمع عندما تتغير قيمة notificationsNotifier (مثل وصول إشعار جديد)
     _notifierListener = () {
       if (!mounted) return; 
       setState(() {
@@ -46,9 +45,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     notificationsNotifier.addListener(_notifierListener);
   }
   
-  // دالة لحساب عدد الإشعارات غير المقروءة بشكل صحيح
   Future<void> _loadUnreadCount() async {
-    // 💡 المنطق الصحيح: نحسب عدد الإشعارات التي isRead = false
     final count = notificationsNotifier.value.where((n) => n['isRead'] == false).length;
     final prefs = await SharedPreferences.getInstance();
 
@@ -56,7 +53,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() {
       _unreadCount = count;
     });
-    // يتم تحديث العداد في SharedPreferences ليعرض في الـ Badge في أماكن أخرى
     await prefs.setInt('unread_count', count);
   }
 
@@ -75,10 +71,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (data != null) {
       final loadedList = List<Map<String, dynamic>>.from(jsonDecode(data) as List<dynamic>);
       
-      // ✅ تحديث التحميل: نمر على كل إشعار ونتأكد من أنه Map وأن isRead موجود
       notificationsNotifier.value = loadedList.map((n) {
         if (n is Map<String, dynamic>) {
-          // يتم التأكد من وجود isRead، وإذا لم يكن موجوداً (وهو ما تم حله في main.dart)، نعتبره غير مقروء (False) للتأكد
           return {
             ...n,
             'isRead': n.containsKey('isRead') ? n['isRead'] : false, 
@@ -89,15 +83,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       
       _notifications = notificationsNotifier.value;
     }
-    await _loadUnreadCount(); // حساب العداد بناءً على البيانات المُحمَّلة
+    await _loadUnreadCount(); 
   }
-
-  // =======================================================
-  // 🔥 التعديل الرئيسي: تحديد إشعار معين كمقروء عند النقر
-  // =======================================================
-  // notification_screen.dart
-
-// ... بقية الكود في الأعلى
 
   // =======================================================
   // 🔥🔥 التعديل النهائي لضمان حفظ حالة isRead بشكل دائم 🔥🔥
@@ -107,25 +94,33 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final currentList = notificationsNotifier.value;
 
     if (currentList.isEmpty || index < 0 || index >= currentList.length) return;
-    if (currentList[index]['isRead'] == true) return; // إذا كان مقروءاً بالفعل، لا تفعل شيئاً
+    
+    // ⚠️ عرض التفاصيل إذا كانت مقروءة بالفعل ثم الخروج
+    if (currentList[index]['isRead'] == true) {
+      _showNotificationDetails(context, currentList[index]);
+      return; 
+    }
 
     // 2. إنشاء نسخة جديدة من القائمة
     final updatedList = List<Map<String, dynamic>>.from(currentList);
     
-    // 3. تحديث الإشعار المحدد في النسخة الجديدة (نقوم بإنشاء Map جديد أيضاً)
+    // 3. تحديث الإشعار المحدد في النسخة الجديدة
     updatedList[index] = {...currentList[index], 'isRead': true};
 
-    // 4. تحديث الـ ValueNotifier ليعكس التغيير
-    // هذا يضمن أن 'notificationsNotifier.value' يحمل الحالة المقروءة الصحيحة
+    // 4. تحديث الـ ValueNotifier ليعكس التغيير (يتم تحديث الـ UI)
     notificationsNotifier.value = updatedList;
     
     // 5. إعادة حفظ القائمة المُحدَّثة في SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    // نستخدم القائمة المحدثة (updatedList) للتخزين
     await prefs.setString('saved_notifications', jsonEncode(updatedList));
 
     // 6. إعادة حساب العداد وتحديثه
     await _loadUnreadCount();
+    
+    // 7. عرض التفاصيل
+    if(mounted) {
+      _showNotificationDetails(context, updatedList[index]);
+    }
   }
   
   
@@ -192,14 +187,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (diff.inHours < 24) return "${diff.inHours} hour left";
     return DateFormat('dd MMM yyyy • hh:mm a').format(time);
   }
-// notification_screen.dart (داخل الكلاس _NotificationsPageState)
 
   Future<void> _clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     
-    // 🔥🔥 التعديل النهائي 🔥🔥
-    // بدلاً من حذف المفتاح، نقوم بحفظ قائمة JSON فارغة صراحةً.
-    // هذا يضمن أن المفتاح موجود ولكن قيمته هي []، مما يمنع المشاكل.
+    // حفظ قائمة JSON فارغة صراحةً
     await prefs.setString('saved_notifications', jsonEncode([]));
     await prefs.setInt('unread_count', 0); // تصفير العداد
 
@@ -219,7 +211,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
     
     // إنشاء قائمة جديدة للتحديث
     final updatedList = notificationsNotifier.value.map((n) {
-      // ننشئ Map جديد لضمان تحديث الـ ValueNotifier بشكل فعال
       return {...n, 'isRead': true}; 
     }).toList();
     
@@ -241,7 +232,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Color(0xFF4E342E),
+        backgroundColor: const Color(0xFF4E342E),
         title: const Text(
           "notifications", // Notifications
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -283,7 +274,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
               itemCount: _notifications.length,
               itemBuilder: (context, index) {
                 final n = _notifications[index];
-                // يتم قراءة حالة isRead مباشرة من الإشعار
                 final isNew = n['isRead'] == false;
                 
                 return FadeInUp(
@@ -292,10 +282,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        // تحديث الألوان: الإشعار المقروء ألوان داكنة أكثر أناقة
                         colors: isNew 
-                          ? [Colors.redAccent.shade700, Colors.deepPurple.shade900] // ألوان قوية للجديد
-                          : [Colors.grey.shade800, Colors.black], // ألوان هادئة للمقروء
+                          ? [Colors.redAccent.shade700, Colors.deepPurple.shade900]
+                          : [Colors.grey.shade800, Colors.black],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -311,15 +300,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     child: ListTile(
                       contentPadding: const EdgeInsets.all(16),
                       onTap: () {
-                        // عند النقر: يتم تحديد الإشعار كمقروء ثم عرض التفاصيل
+                        // عند النقر: يتم تحديد الإشعار كمقروء ثم عرض التفاصيل (يتم ذلك داخل _markNotificationAsRead)
                         _markNotificationAsRead(index);
-                        _showNotificationDetails(context, n);
                       },
                       
                       leading: CircleAvatar(
-                        // تحديث لون الدائرة: أبيض للجديد، رمادي غامق للمقروء
                         backgroundColor: isNew ? Colors.white : Colors.grey.shade800,
-                        // تحديث لون الأيقونة: أحمر للجديد، أبيض للمقروء
                         child: Icon(Icons.notifications_active, color: isNew ? Colors.red : Colors.white), 
                       ),
                       title: Row(
@@ -354,7 +340,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 8),
-                          // عرض سطر واحد فقط من المحتوى في القائمة مع نقاط تعجب
                           Text(
                             n['body'],
                             maxLines: 1, 

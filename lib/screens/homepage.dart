@@ -1,12 +1,13 @@
 import 'package:churchapp/screens/notification/notification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'dart:math'; // لاستخدام Random لجلب الآية العشوائية
 import 'dart:async'; // لاستخدام Timer
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart' show DateFormat; 
 // يجب عليك التأكد من وجود هذه الملفات في المسار الصحيح
-import '../widgets/app_drawer.dart'; 
+import 'app_drawer.dart'; 
 
 
 // ==================================================================
@@ -200,10 +201,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // قائمة بأزرار الوصول السريع
   final List<Map<String, dynamic>> quickActions = const [
+        {'title': 'الإنجيل', 'icon': Icons.menu_book, 'route': '/bible'},
+
     {'title': ' القداسات و العشيات', 'icon': Icons.church, 'route': '/masses'},
-    {'title': 'الكانتين', 'icon': Icons.food_bank, 'route': '/StorePage'},
+    {'title': 'الخمس خبزات', 'icon': Icons.food_bank, 'route': '/StorePage'},
     {'title': 'الاجتماعات', 'icon': Icons.groups_2, 'route': '/meetings'},
-    {'title': 'الأحداث والأنشطة', 'icon': Icons.event, 'route': '/events'},
+    {'title': 'الأنشطة والرحلات', 'icon': Icons.event, 'route': '/events'},
+        {'title': 'الافتقاد', 'icon': Icons.event, 'route': '/service'},
+
+
+
   ];
 
   // متغيرات الحالة
@@ -332,39 +339,41 @@ class _HomePageState extends State<HomePage> {
       }
     });
   }
-// داخل الكلاس _HomePageState
-Future<bool> _onWillPop() async {
-  final now = DateTime.now();
-  final lastPressed = _lastPressed;
   
-  const exitDuration = Duration(seconds: 2); 
+  // 💡 الدالة المُعدلة لضمان الخروج القاطع
+  Future<bool> _onWillPop() async {
+    final now = DateTime.now();
+    final lastPressed = _lastPressed;
+    
+    const exitDuration = Duration(seconds: 2); 
 
-  if (lastPressed == null || now.difference(lastPressed) > exitDuration) {
-    _lastPressed = now; 
-    
-    // 💡 هذا هو كود SnackBar المعدل مع إضافة الـ Margin
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          'اضغط مرة أخرى للخروج ', 
-          textAlign: TextAlign.center, 
-          style: TextStyle(color: AppColors.secondaryGold, fontWeight: FontWeight.bold),
+    if (lastPressed == null || now.difference(lastPressed) > exitDuration) {
+      _lastPressed = now; 
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'اضغط مرة أخرى للخروج ', 
+            textAlign: TextAlign.center, 
+            style: TextStyle(color: AppColors.secondaryGold, fontWeight: FontWeight.bold),
+          ),
+          duration: exitDuration,
+          backgroundColor: AppColors.primaryBlue, 
+          behavior: SnackBarBehavior.floating, 
+          
+          margin: const EdgeInsets.only(bottom: 20, left: 60, right: 60),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), 
         ),
-        duration: exitDuration,
-        backgroundColor: AppColors.primaryBlue, 
-        behavior: SnackBarBehavior.floating, 
-        
-        // 👈 إضافة تباعد (Margin/Padding)
-        margin: const EdgeInsets.only(bottom: 20, left: 60, right: 60),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), // شكل دائري أفضل
-      ),
-    );
+      );
+      
+      return false; // منع الخروج
+    }
     
-    return false; // منع الخروج
+    // 💥 عند الضغطة الثانية، نستخدم SystemNavigator.pop لطلب الخروج من النظام مباشرة
+    SystemNavigator.pop();
+    // نرجع true للسماح لـ WillPopScope بالعمل، لكن النظام سينتهي فعلياً عبر pop()
+    return true; 
   }
-  
-  return true; // السماح بالخروج
-}
 
 
   @override
@@ -376,9 +385,9 @@ Future<bool> _onWillPop() async {
       );
     }
 
-    return WillPopScope( // 👈 استخدام WillPopScope للتحكم في زر الرجوع
+    return WillPopScope( 
       onWillPop: _onWillPop,
-      child: Directionality( // لتحديد الاتجاه من اليمين لليسار (RTL) للغة العربية
+      child: Directionality( 
         textDirection: TextDirection.rtl,
         child: Scaffold(
           backgroundColor: AppColors.backgroundColor,
@@ -397,7 +406,6 @@ Future<bool> _onWillPop() async {
               ),
             ],
           ),
-          
           // 2. الـ Drawer 
           drawer: const AppDrawer(),
           

@@ -1,9 +1,9 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 
 // =========================================================
@@ -11,9 +11,10 @@ import 'package:flutter/services.dart';
 // =========================================================
 
 class AppColors {
-  static const Color primaryStone = Color(0xFF4E342E); 
-  static const Color accentGold = Color(0xFFFFD700); 
-  static const Color backgroundBeige = Color(0xFFFFF8F0); 
+  static const Color primaryStone = Color(0xFF4E342E);
+  static const Color SecodaryStone = Color.fromARGB(255, 105, 64, 54);
+  static const Color accentGold = Color(0xFFFFD700);
+  static const Color backgroundBeige = Color(0xFFFFF8F0);
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
@@ -21,13 +22,27 @@ class AppColors {
   static const Color successGreen = Color(0xFF2E7D32);
 }
 
-// الخريطة الثابتة لربط الاسم المعروض بقيمة قاعدة البيانات
-const Map<String, String> _storeMapping = {
-   'كانتين كنيسه القديس': 'Stall 1',
-   'كانتين كنيسه العذراء': 'Stall 2',
+// قائمة التصنيفات الثابتة
+const List<String> kProductCategories = [
+   'جبن والبان',
+   'فراخ ولحوم وسمك',
+   'منظفات',
+   'صيامي',
+   'أخرى',
+];
+
+const Map<String, Map<String, String>> _storeMapping = {
+   'كانتين كنيسه القديس': { 
+     'dbValue': 'Stall 1',
+     'phone': '+201012345678',
+   },
+   'كانتين كنيسه العذراء': {
+     'dbValue': 'Stall 2',
+     'phone': '+201198765432', 
+   },
 };
 
-// نموذج بيانات المنتج (لم يتم تعديله)
+// نموذج بيانات المنتج
 class StoreProduct {
   final String id;
   final String name;
@@ -37,6 +52,7 @@ class StoreProduct {
   final int quantity; 
   final String? imageUrl;
   final Timestamp? dateAdded; 
+  final String category; // 🆕 حقل التصنيف
 
   const StoreProduct({
     required this.id,
@@ -45,6 +61,7 @@ class StoreProduct {
     required this.storeName,
     required this.price,
     required this.quantity,
+    required this.category,
     this.imageUrl,
     this.dateAdded, 
   });
@@ -58,8 +75,9 @@ class StoreProduct {
       storeName: data?['storeName'] ?? 'Stall 1', 
       price: (data?['price'] as num?)?.toDouble() ?? 0.0,
       quantity: data?['quantity'] ?? 0,
-      imageUrl: data?['imageUrl'],
+      imageUrl: data?['imageUrl'], 
       dateAdded: data?['dateAdded'] as Timestamp?,
+      category: data?['category'] ?? kProductCategories[0], // 🆕 جلب التصنيف
     );
   }
 
@@ -70,7 +88,8 @@ class StoreProduct {
       'storeName': storeName,
       'price': price,
       'quantity': quantity,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl, 
+      'category': category, // 🆕 إرسال التصنيف
     };
   }
   
@@ -78,7 +97,7 @@ class StoreProduct {
 }
 
 // =========================================================
-// II. الصفحة الرئيسية (StorePage) - منطق Store Mapping محسن ومنطق الأدمن
+// II. الصفحة الرئيسية (StorePage) - منطق الفلترة المحدث
 // =========================================================
 
 class StorePage extends StatefulWidget {
@@ -93,39 +112,49 @@ class _StorePageState extends State<StorePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  // 💡 التعديل 1: إعادة تسمية المتغير ليعكس صلاحية الإدارة في المتجر
   bool _canManageStore = false; 
-  bool _isLoading = true; // حالة تحميل مبدئية
+  bool _isLoading = true; 
   
   final String appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
   late final CollectionReference _productsCollection;
 
-  // استخدام الخريطة الثابتة
   final List<String> _stores = _storeMapping.keys.toList();
-  
+    
   late String _currentStoreFilter;
-  bool _isAdminStatus = false; // سنعيد تسميتها لاحقاً
-
+  // 🆕 متغير حالة جديد للفلترة حسب التصنيف
+  late String _currentCategoryFilter; 
 
   // دالة مساعدة لربط اسم المتجر المعروض (Display Name) بالقيمة المخزنة في قاعدة البيانات (DB Value)
   String _getStoreDbValue(String displayName) {
-    return _storeMapping[displayName] ?? 'Stall 1';
+    return _storeMapping[displayName]?['dbValue'] ?? 'Stall 1';
   }
 
   // دالة مساعدة لربط القيمة المخزنة في قاعدة البيانات (DB Value) باسم المتجر المعروض
   String _getStoreDisplayName(String dbValue) {
     final entry = _storeMapping.entries.firstWhere(
-      (e) => e.value == dbValue,
-      orElse: () => MapEntry(_stores[0], 'Stall 1'),
+      (e) => e.value['dbValue'] == dbValue,
+      orElse: () => MapEntry(_stores[0], const {'dbValue': 'Stall 1', 'phone': ''}),
     );
     return entry.key;
   }
+  
+  // دالة مساعدة جديدة لجلب رقم الهاتف
+  String _getStorePhoneNumber(String displayName) {
+    return _storeMapping[displayName]?['phone'] ?? '';
+  }
+  
+  // 🆕 قائمة التصنيفات الخاصة بالفلتر (بإضافة خيار "الكل")
+  List<String> get _filterCategories {
+    return ['الكل', ...kProductCategories];
+  }
+
 
   @override
   void initState() {
     super.initState();
     
     _currentStoreFilter = _stores[0];
+    _currentCategoryFilter = 'الكل'; // الفلتر الافتراضي: عرض كل التصنيفات
 
     _productsCollection = _firestore
         .collection('artifacts')
@@ -138,31 +167,29 @@ class _StorePageState extends State<StorePage> {
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
   }
 
-  // 💡 التعديل 2: تحديث دالة فحص حالة الأدمن للتحقق حصرياً من isStoreManager
+  // دالة فحص حقل isAdmin و isStoreManager في Firestore
   Future<void> _checkAdminStatus(String uid) async {
     try {
-      // التحقق من صلاحية المشرف في مجموعة 'users'
       final doc = await _firestore.collection('users').doc(uid).get();
       final data = doc.data();
+
+      final bool isAdmin = data?['isAdmin'] ?? false;
+      final bool isStoreManager = data?['isStoreManager'] ?? false; 
       
-      // الصلاحية تعتمد حصرياً على كون المستخدم isStoreManager: true
-      final bool isStoreManager = data?['isStoreManager'] ?? false;
-      
-      // الآن، سواء كان المستخدم أدمن عام أم لا، الصلاحية للكتابة مرتبطة بدور مدير المتجر
-      final bool canManage = isStoreManager; 
-      
+      final bool canEdit = isAdmin || isStoreManager; 
+
       if (mounted) {
         setState(() {
-          _canManageStore = canManage;
+          _canManageStore = canEdit; 
           _isLoading = false; 
         });
       }
     } catch (e) {
-      print('Failed to check management status for $uid: $e');
+      print('Failed to check permissions for $uid: $e');
       if (mounted) {
         setState(() { 
-          _canManageStore = false; 
-          _isLoading = false;
+          _canManageStore = false;
+          _isLoading = false; 
         });
       }
     }
@@ -172,15 +199,12 @@ class _StorePageState extends State<StorePage> {
     _auth.authStateChanges().listen((User? user) async {
       if (mounted) {
         if (user != null) {
-          // إذا كان المستخدم مصادق عليه، تحقق من حالة الأدمن
           await _checkAdminStatus(user.uid);
         } else {
-          // إذا لم يكن مصادق عليه (مستخدم ضيف أو لم يسجل دخول)، ليس مشرفاً للمتجر
           setState(() {
             _canManageStore = false;
             _isLoading = false;
           });
-          // محاولة تسجيل الدخول كضيف (للسماح بالقراءة)
           try {
              await _auth.signInAnonymously(); 
           } catch (e) {
@@ -192,8 +216,7 @@ class _StorePageState extends State<StorePage> {
   }
 
   Future<void> deleteProduct(BuildContext context, String productId) async {
-    // 💡 التعديل 3: التحقق من _canManageStore
-    if (!_canManageStore) return; // حماية إضافية
+    if (!_canManageStore) return; 
     try {
       await _productsCollection.doc(productId).delete();
       if (context.mounted) {
@@ -212,7 +235,6 @@ class _StorePageState extends State<StorePage> {
   }
 
   void _navigateToAddEditProduct({StoreProduct? product}) {
-    // 💡 التعديل 4: التحقق من _canManageStore
     if (!_canManageStore) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يجب أن تكون مشرفاً مسئولاً عن المتجر للقيام بهذه العملية.')),
@@ -226,17 +248,31 @@ class _StorePageState extends State<StorePage> {
           productsCollection: _productsCollection,
           product: product,
           stores: _stores,
-          getStoreDbValue: _getStoreDbValue, // تمرير الدالة
-          getStoreDisplayName: _getStoreDisplayName, // تمرير الدالة
+          getStoreDbValue: _getStoreDbValue, 
+          getStoreDisplayName: _getStoreDisplayName, 
         ),
       ),
     );
   }
+  
+  // 🆕 دالة جلب StreamQuery المحدثة للتعامل مع فلترة التصنيف
+  Stream<QuerySnapshot> get _productStream {
+    final String storeQueryValue = _getStoreDbValue(_currentStoreFilter);
+    Query query = _productsCollection
+        .where('storeName', isEqualTo: storeQueryValue)
+        .orderBy('dateAdded', descending: true); // الترتيب حسب التاريخ
+
+    // طبق فلترة التصنيف فقط إذا لم يكن الخيار هو 'الكل'
+    if (_currentCategoryFilter != 'الكل') {
+      query = query.where('category', isEqualTo: _currentCategoryFilter);
+    }
+    
+    return query.snapshots();
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    final String storeQueryValue = _getStoreDbValue(_currentStoreFilter);
-    
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.backgroundBeige,
@@ -255,25 +291,23 @@ class _StorePageState extends State<StorePage> {
             color: AppColors.accentGold,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
-            
           )
         ),
         backgroundColor: AppColors.primaryStone,
         elevation: 8,
         shadowColor: AppColors.primaryStone.withOpacity(0.5),
         centerTitle: true,
-
       ),
       
       body: Column(
         children: [
           _buildStoreToggleBar(),
+          // 🆕 شريط فلترة التصنيفات
+          _buildCategoryFilterBar(), 
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _productsCollection
-                  .where('storeName', isEqualTo: storeQueryValue) 
-                  .snapshots(),
+              stream: _productStream, // استخدام الدالة المحدثة
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('حدث خطأ: ${snapshot.error}', textAlign: TextAlign.center, style: TextStyle(color: AppColors.alertRed)));
@@ -288,7 +322,9 @@ class _StorePageState extends State<StorePage> {
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Text(
-                        'لا توجد منتجات حالياً في $_currentStoreFilter.',
+                        _currentCategoryFilter == 'الكل' 
+                          ? 'لا توجد منتجات حالياً في $_currentStoreFilter.'
+                          : 'لا توجد منتجات من تصنيف "($_currentCategoryFilter)" في $_currentStoreFilter.',
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 18, fontStyle: FontStyle.italic),
                         textAlign: TextAlign.center,
                       ),
@@ -300,11 +336,12 @@ class _StorePageState extends State<StorePage> {
                     .map((doc) => StoreProduct.fromFirestore(doc))
                     .toList();
                 
-                products.sort((a, b) {
-                  final dateA = a.dateAdded?.toDate().millisecondsSinceEpoch ?? 0;
-                  final dateB = b.dateAdded?.toDate().millisecondsSinceEpoch ?? 0;
-                  return dateB.compareTo(dateA);
-                });
+                // الترتيب حسب التاريخ (تم نقل الترتيب إلى _productStream لتحسين الأداء)
+                // products.sort((a, b) {
+                //   final dateA = a.dateAdded?.toDate().millisecondsSinceEpoch ?? 0;
+                //   final dateB = b.dateAdded?.toDate().millisecondsSinceEpoch ?? 0;
+                //   return dateB.compareTo(dateA);
+                // });
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(12.0),
@@ -312,11 +349,11 @@ class _StorePageState extends State<StorePage> {
                   itemBuilder: (context, index) {
                     return _ProductCard(
                       product: products[index],
-                      // 💡 التعديل 5: تمرير حالة الإدارة الجديدة
                       canManageStore: _canManageStore, 
                       onDelete: () => deleteProduct(context, products[index].id),
                       onEdit: () => _navigateToAddEditProduct(product: products[index]),
-                      getStoreDisplayName: _getStoreDisplayName, // تمرير الدالة
+                      getStoreDisplayName: _getStoreDisplayName, 
+                      getStorePhoneNumber: _getStorePhoneNumber, 
                     );
                   },
                 );
@@ -326,7 +363,6 @@ class _StorePageState extends State<StorePage> {
         ],
       ),
 
-      // 💡 التعديل 6: عرض زر الإضافة فقط إذا كان _canManageStore صحيحاً
       floatingActionButton: _canManageStore
           ? FloatingActionButton.extended(
               onPressed: () => _navigateToAddEditProduct(),
@@ -344,7 +380,7 @@ class _StorePageState extends State<StorePage> {
   
   Widget _buildStoreToggleBar() {
     return Container(
-      color: AppColors.backgroundBeige, // خلفية بيج
+      color: AppColors.backgroundBeige, 
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
       child: Center(
         child: ToggleButtons(
@@ -354,7 +390,7 @@ class _StorePageState extends State<StorePage> {
               _currentStoreFilter = _stores[index];
             });
           },
-          borderRadius: BorderRadius.circular(25), // حواف دائرية فخمة
+          borderRadius: BorderRadius.circular(25), 
           selectedColor: AppColors.accentGold,
           color: AppColors.textPrimary,
           fillColor: AppColors.primaryStone,
@@ -372,29 +408,91 @@ class _StorePageState extends State<StorePage> {
       ),
     );
   }
+  
+  // 🆕 دالة بناء شريط فلترة التصنيفات
+  Widget _buildCategoryFilterBar() {
+    return Container(
+      color: AppColors.backgroundBeige,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        reverse: true, // للبدء من اليمين
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: _filterCategories.map((category) {
+            final isSelected = category == _currentCategoryFilter;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5.0),
+              child: ChoiceChip(
+                label: Text(category),
+                selected: isSelected,
+                selectedColor: AppColors.primaryStone,
+                labelStyle: TextStyle(
+                  color: isSelected ? AppColors.accentGold : AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                backgroundColor: AppColors.backgroundBeige,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: isSelected ? AppColors.primaryStone : AppColors.textSecondary.withOpacity(0.5),
+                    width: 1.0,
+                  ),
+                ),
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _currentCategoryFilter = category;
+                    });
+                  }
+                },
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
 }
 
 // =========================================================
-// III. مكونات الواجهة (UI Components) - السعر المتدرج
+// III. مكونات الواجهة (UI Components) 
 // =========================================================
 
 class _ProductCard extends StatelessWidget {
   final StoreProduct product;
-  // 💡 التعديل 7: تغيير اسم المتغير في Card
   final bool canManageStore;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
-  final String Function(String) getStoreDisplayName; // دالة جلب الاسم المعروض
+  final String Function(String) getStoreDisplayName; 
+  final String Function(String) getStorePhoneNumber; 
 
   const _ProductCard({
     required this.product,
-    // 💡 التعديل 8: تغيير اسم المتغير في constructor
     required this.canManageStore,
     required this.onDelete,
     required this.onEdit,
     required this.getStoreDisplayName,
+    required this.getStorePhoneNumber, 
     super.key,
   });
+  
+  void _callStore(BuildContext context, String phoneNumber) {
+    if (phoneNumber.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('جارٍ الاتصال بـ $phoneNumber... (يتطلب حزمة url_launcher في Flutter)'),
+          backgroundColor: AppColors.successGreen,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ لا يوجد رقم هاتف متاح لهذا المتجر.')),
+      );
+    }
+  }
+
 
   void _showDeleteConfirmation(BuildContext context) {
     showDialog(
@@ -436,6 +534,7 @@ class _ProductCard extends StatelessWidget {
         : '❌ نفد المخزون';
         
     final String storeDisplayName = getStoreDisplayName(product.storeName);
+    final String storePhoneNumber = getStorePhoneNumber(storeDisplayName); 
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
@@ -458,6 +557,7 @@ class _ProductCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // منطقة عرض الصورة أو الأيقونة
                 Container(
                   width: 80,
                   height: 80,
@@ -467,7 +567,19 @@ class _ProductCard extends StatelessWidget {
                     border: Border.all(color: AppColors.accentGold, width: 1),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(Icons.shopping_bag_outlined, size: 45, color: AppColors.primaryStone),
+                  child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.network(
+                            product.imageUrl!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => 
+                                const Icon(Icons.broken_image, size: 45, color: AppColors.alertRed), 
+                          ),
+                        )
+                      : const Icon(Icons.shopping_bag_outlined, size: 45, color: AppColors.primaryStone),
                 ),
                 const SizedBox(width: 15),
                 
@@ -487,14 +599,13 @@ class _ProductCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // السعر (المبهر) - تطبيق الـ Gradient
+                      // السعر
                       Text(
                         '${NumberFormat.currency(locale: 'ar', symbol: 'ج.م').format(product.price)}', 
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          // تطبيق الـ Gradient الذهبي على النص
                           foreground: Paint()
                             ..shader = const LinearGradient(
                               colors: <Color>[
@@ -503,7 +614,7 @@ class _ProductCard extends StatelessWidget {
                                 Color.fromARGB(255, 136, 114, 2),
                               ],
                             ).createShader(
-                              const Rect.fromLTWH(0.0, 0.0, 200.0, 70.0), // يجب تحديد حجم تقريبي
+                              const Rect.fromLTWH(0.0, 0.0, 200.0, 70.0), 
                             ),
                         ),
                       ),
@@ -515,6 +626,27 @@ class _ProductCard extends StatelessWidget {
 
             const SizedBox(height: 15),
             
+            // 🆕 عرض التصنيف
+            // Align(
+            //   alignment: Alignment.centerRight,
+            //   child: Container(
+            //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            //     decoration: BoxDecoration(
+            //       color: AppColors.accentGold.withOpacity(0.2),
+            //       borderRadius: BorderRadius.circular(8)
+            //     ),
+            //     child: Text(
+            //       'التصنيف: ${product.category}',
+            //       style: const TextStyle(
+            //         fontSize: 13,
+            //         color: AppColors.primaryStone,
+            //         fontWeight: FontWeight.w600,
+            //       ),
+            //     ),
+            //   ),
+            // ),
+            const SizedBox(height: 10),
+
             Text(
               product.description,
               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
@@ -526,7 +658,7 @@ class _ProductCard extends StatelessWidget {
             const Divider(color: AppColors.primaryStone, thickness: 0.5, height: 30),
 
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
                   availabilityText,
@@ -536,29 +668,12 @@ class _ProductCard extends StatelessWidget {
                     color: product.isAvailable ? AppColors.successGreen : AppColors.alertRed,
                   ),
                 ),
-                
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryStone.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8)
-                  ),
-                  child: Text(
-                    'متجر: $storeDisplayName',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.primaryStone,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               ].reversed.toList(),
             ),
-
-            // 💡 التعديل 9: عرض الأزرار فقط إذا كان canManageStore صحيحًا
+            
             if (canManageStore)
               Padding(
-                padding: const EdgeInsets.only(top: 10.0),
+                padding: const EdgeInsets.only(top: 15.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -584,7 +699,7 @@ class _ProductCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------
-// شاشة إضافة/تعديل المنتج (AddEditProductScreen) - منطق Store Mapping محسن
+// شاشة إضافة/تعديل المنتج (AddEditProductScreen)
 // ---------------------------------------------------------
 
 class AddEditProductScreen extends StatefulWidget {
@@ -610,12 +725,15 @@ class AddEditProductScreen extends StatefulWidget {
 
 class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _quantityController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _imageUrlController = TextEditingController(); 
   
   late String _selectedStore;
+  // 🆕 متغير حالة جديد للتصنيف
+  late String _selectedCategory; 
   bool _isLoading = false;
 
   @override
@@ -623,14 +741,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     super.initState();
     
     _selectedStore = widget.stores[0];
+    _selectedCategory = kProductCategories[0]; // تعيين قيمة افتراضية
 
     if (widget.product != null) {
       _nameController.text = widget.product!.name;
       _descriptionController.text = widget.product!.description;
       _priceController.text = widget.product!.price.toString();
       _quantityController.text = widget.product!.quantity.toString();
+      _imageUrlController.text = widget.product!.imageUrl ?? ''; 
       
-      // تحديد المتجر الصحيح باستخدام الدالة الممررة
       final String storedDbValue = widget.product!.storeName;
       final String displayName = widget.getStoreDisplayName(storedDbValue);
       
@@ -638,6 +757,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         (store) => store == displayName,
         orElse: () => widget.stores[0],
       );
+      
+      // 🆕 تهيئة التصنيف بناءً على المنتج الحالي
+      _selectedCategory = widget.product!.category;
     }
   }
 
@@ -647,6 +769,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _descriptionController.dispose();
     _priceController.dispose();
     _quantityController.dispose();
+    _imageUrlController.dispose(); 
     super.dispose();
   }
 
@@ -655,7 +778,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       return;
     }
 
-    // شرط المصادقة قبل الإرسال (حماية إضافية)
     if (FirebaseAuth.instance.currentUser == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -668,15 +790,20 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     setState(() { _isLoading = true; });
 
     try {
-      // استخدام الدالة الممررة
       final String storeValue = widget.getStoreDbValue(_selectedStore);
       
+      final String? imageUrl = _imageUrlController.text.trim().isEmpty 
+          ? null 
+          : _imageUrlController.text.trim();
+          
       final Map<String, dynamic> productData = {
         'name': _nameController.text,
         'description': _descriptionController.text,
         'price': double.parse(_priceController.text),
         'quantity': int.parse(_quantityController.text),
         'storeName': storeValue, 
+        'imageUrl': imageUrl, 
+        'category': _selectedCategory, // 🆕 تضمين التصنيف
       };
 
 
@@ -721,6 +848,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
+    bool isRequired = true, 
   }) {
     return TextFormField(
       controller: controller,
@@ -744,13 +872,56 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         filled: true,
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) {
+        if (isRequired && (value == null || value.isEmpty)) { 
           return 'هذا الحقل مطلوب.';
         }
-        if (keyboardType == TextInputType.number || keyboardType == TextInputType.phone) {
+        if ((keyboardType == TextInputType.number || keyboardType == TextInputType.phone) && value != null && value.isNotEmpty) {
+          // التحقق من أن القيمة رقمية إذا كان نوع لوحة المفاتيح رقماً
           if (double.tryParse(value) == null) {
              return 'يجب أن تكون القيمة رقماً صحيحاً أو عشرياً.';
           }
+        }
+        return null;
+      },
+    );
+  }
+
+  // 🆕 دالة بناء قائمة اختيار التصنيف المنسدلة
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedCategory,
+      decoration: InputDecoration(
+        labelText: 'اختر التصنيف',
+        labelStyle: const TextStyle(color: AppColors.primaryStone, fontWeight: FontWeight.bold),
+        prefixIcon: const Icon(Icons.category, color: AppColors.accentGold),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: AppColors.textSecondary, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: AppColors.primaryStone, width: 2.5),
+        ),
+        fillColor: Colors.white,
+        filled: true,
+      ),
+      icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryStone, size: 30),
+      items: kProductCategories.map((String category) {
+        return DropdownMenuItem<String>(
+          value: category,
+          child: Text(category, textAlign: TextAlign.right, style: TextStyle(color: AppColors.textPrimary)),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          setState(() {
+            _selectedCategory = newValue;
+          });
+        }
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'يجب اختيار تصنيف للمنتج.';
         }
         return null;
       },
@@ -816,6 +987,23 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               ),
               const SizedBox(height: 20),
 
+              _buildTextFormField( 
+                controller: _imageUrlController,
+                label: 'رابط صورة المنتج (URL) - اختياري',
+                icon: Icons.image,
+                keyboardType: TextInputType.url,
+                maxLines: 2,
+                isRequired: false, 
+              ),
+              
+              const SizedBox(height: 20),
+
+              // 🆕 حقل اختيار التصنيف
+              _buildCategoryDropdown(), 
+              
+              const SizedBox(height: 20),
+
+              // حقل اختيار المتجر
               DropdownButtonFormField<String>(
                 value: _selectedStore,
                 decoration: InputDecoration(

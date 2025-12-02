@@ -4,27 +4,21 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
-import 'package:churchapp/routes.dart';
+import 'package:churchapp/routes.dart'; 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:churchapp/firebase_options.dart';
+import 'package:churchapp/firebase_options.dart'; 
 
 // =========================================================================
 // 🔥 ثوابت ومتغيرات OneSignal
 // =========================================================================
-// ✅ قم بتحديث هذا بالـ App ID الخاص بك
 const OneSignalAppId ='a3d9efe8-e736-45fc-98fa-2d4a9d4051c5';
-// 👀 notifier مشترك لإدارة حالة الإشعارات (للعرض في الواجهة)
-// يستخدم لتخزين الإشعارات كقائمة من الخرائط
 final notificationsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
 
 
-
-
 // =========================================================================
-// 🔔 دالة تهيئة OneSignal
+// 🔔 دالة تهيئة OneSignal (تم تحديثها)
 // =========================================================================
 Future<void> _initializeOneSignal() async {
-  // تخطي التهيئة على الويب لأن OneSignal لا يدعمها بشكل كامل حالياً
   if (kIsWeb) {
     print("🔔 OneSignal initialization skipped on Web platform.");
     return;
@@ -35,10 +29,10 @@ Future<void> _initializeOneSignal() async {
   await OneSignal.Notifications.requestPermission(true);
   OneSignal.User.pushSubscription.optIn();
 
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance(); 
   final String? savedString = prefs.getString('saved_notifications');
 
-  // 1. تحميل الإشعارات المحفوظة من SharedPreferences
+  // 1. تحميل الإشعارات المحفوظة من SharedPreferences (عند بداية التطبيق)
   if (savedString != null) {
     try {
       List<dynamic> loadedList = jsonDecode(savedString);
@@ -48,7 +42,6 @@ Future<void> _initializeOneSignal() async {
             "title": notif["title"] ?? "No title",
             "body": notif["body"] ?? "No message",
             "time": notif["time"] ?? DateTime.now().toIso8601String(),
-            // نعتبر الإشعار مقروءاً إذا كان الحقل مفقوداً أو غير صحيح
             "isRead": (notif.containsKey("isRead") && notif["isRead"] is bool) ? notif["isRead"] : true,
           };
         }
@@ -57,15 +50,15 @@ Future<void> _initializeOneSignal() async {
       
       notificationsNotifier.value = finalLoadedList;
       
-      // تحديث عداد الإشعارات غير المقروءة
       await prefs.setInt('unread_count', finalLoadedList.where((n) => n["isRead"] == false).length);
     } catch (e) {
       print("Error loading saved notifications: $e");
     }
   }
   
-  // 2. معالج استقبال الإشعار أثناء عمل التطبيق (Foreground)
+  // 2. معالج استقبال الإشعار أثناء عمل التطبيق (Foreground) - الجزء المُعدَّل
   OneSignal.Notifications.addForegroundWillDisplayListener((event) async {
+    
     final notif = event.notification;
     final newNotif = {
       "title": notif.title ?? "No title",
@@ -74,23 +67,29 @@ Future<void> _initializeOneSignal() async {
       "isRead": false, // الإشعار الجديد دائماً غير مقروء
     };
 
-    // إضافة الإشعار الجديد إلى بداية القائمة
-    notificationsNotifier.value = [newNotif, ...notificationsNotifier.value]; 
+    // 🔥 التعديل: نعتمد مباشرة على القيمة الحالية في الذاكرة (notificationsNotifier.value) 
+    // لضمان أننا نستخدم حالة القراءة/الحذف التي تمت للتو في NotificationsPage
+    final currentNotifications = notificationsNotifier.value; 
+    
+    // إضافة الإشعار الجديد إلى بداية القائمة الحالية
+    final updatedNotifications = [newNotif, ...currentNotifications];
+    
+    // تحديث الـ ValueNotifier في الذاكرة (سيحدث الـ UI)
+    notificationsNotifier.value = updatedNotifications; 
 
-    // حفظ القائمة المحدثة بالكامل
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_notifications', jsonEncode(notificationsNotifier.value));
+    // ✅ الآن نقوم بالحفظ باستخدام نسخة prefs حديثة
+    final prefs = await SharedPreferences.getInstance(); 
+    await prefs.setString('saved_notifications', jsonEncode(updatedNotifications));
     
     // تحديث عداد الإشعارات غير المقروءة
-    await prefs.setInt('unread_count', notificationsNotifier.value.where((n) => n["isRead"] == false).length);
+    await prefs.setInt('unread_count', updatedNotifications.where((n) => n["isRead"] == false).length);
 
     event.notification.display();
-    print("📩 Notification received: $newNotif");
+    print("📩 Notification received and persisted: $newNotif");
   });
 
   OneSignal.Notifications.addClickListener((event) {
     print("🔔 Notification clicked: ${event.notification.jsonRepresentation()}");
-    // يمكنك هنا إضافة منطق التوجيه إلى شاشة الإشعارات
   });
 
   print("✅✅✅✅✅ OneSignal initialized successfully!");
@@ -110,15 +109,12 @@ Future<void> main() async {
   
   await _initializeOneSignal();
   
-  // 🧭🧭🧭 منطق التحقق من حالة تسجيل الدخول (التوكن) 🧭🧭🧭
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  // افترض أنك تخزن التوكن تحت مفتاح 'user_token'
   final String? userToken = prefs.getString('user_token');
-  // إذا كان هناك توكن، اذهب إلى الشاشة الرئيسية
+  
   if (userToken != null && userToken.isNotEmpty) {
     initialRoute = '/HomePage'; 
   } else {
-    // إذا لم يكن هناك توكن، اذهب إلى شاشة البدء/Onboarding
     initialRoute = '/'; 
   }
 
@@ -131,19 +127,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'تطبيق الكنيسة', // أضفت العنوان لضمان اكتمال الـ MaterialApp
+      title: 'تطبيق الكنيسة',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue), // أضفت ثيم مبسط لضمان التشغيل
-      
-      // builder: (context, child) {
-      //   return Directionality(
-      //     // تم تغيير الـ textDirection إلى RTL لدعم واجهة عربية نموذجية
-      //     textDirection: TextDirection.rtl, 
-      //     child: child!,
-      //   );
-      // },
-      
-      routes: routes, // استخدام الـ Map الذي تم استيراده
+      theme: ThemeData(primarySwatch: Colors.blue),
+      routes: routes,
       initialRoute: initialRoute, 
     );
   }

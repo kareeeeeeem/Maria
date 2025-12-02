@@ -635,15 +635,10 @@ class _ScheduleList extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              // يتم تفعيل التعديل فقط إذا كانت لديه صلاحية (Admin OR Rector)
+              // ✅ تم التعديل: onTap يصبح null للمستخدم العادي (إلغاء التنبيه/التذكير)
               onTap: isAdmin 
                   ? () => onEdit(schedule: schedule)
-                  : () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('✅ تم تفعيل التذكير لموعد ${schedule.title}!')
-                        ),
-                      );
-                    },
+                  : null, 
               child: Padding(
                 padding: const EdgeInsets.all(15.0),
                 child: Row(
@@ -703,7 +698,8 @@ class _ScheduleList extends StatelessWidget {
                     ),
 
                     // 3. العرض المشروط لأزرار الإدارة
-                    if (isAdmin) // يعتمد على منطق (Admin OR Rector)
+                    // ✅ تم التعديل: يتم عرض أزرار الإدارة فقط إذا كان isAdmin صحيحاً، وإلا لا يعرض شيئاً.
+                    if (isAdmin) 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -718,12 +714,6 @@ class _ScheduleList extends StatelessWidget {
                             tooltip: 'حذف',
                           ),
                         ],
-                      )
-                    else
-                      // أيقونة التذكير لليوزر العادي
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                        child: Icon(Icons.notifications_active_outlined, color: AppColors.primaryMaroon.withOpacity(0.7), size: 28),
                       ),
                   ],
                 ),

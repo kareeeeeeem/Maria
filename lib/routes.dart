@@ -1,7 +1,7 @@
 
 import 'package:churchapp/aus/login/login_screen.dart';
 import 'package:churchapp/aus/signup/signup_screen.dart';
-import 'package:churchapp/const/complete_profile_screen.dart';
+import 'package:churchapp/screens/bible/bible_page.dart';
 import 'package:churchapp/screens/ChurchStore.dart';
 import 'package:churchapp/screens/libraryPage.dart';
 import 'package:churchapp/screens/MemberShipSignUp.dart';
@@ -28,47 +28,49 @@ import 'package:churchapp/welcome/welcome_screen.dart';
 import 'package:flutter/material.dart';
 
 final Map<String, WidgetBuilder> routes = {
- // ✅ تم دمج المسار الأولي مع /StartScreen
+
         '/': (context) => const StartScreen(), 
         '/StartScreen': (context) => const StartScreen(), // الاحتفاظ به للمرجعية
         
+        '/user_signup': (context) => const UserSignUpScreen(), 
+        '/user_login': (context) => const UserLoginScreen(), 
+
         '/HomePage': (context) => const HomePage(), 
-        // ⚠️ ملاحظة: يجب أن يكون المسار الرئيسي بعد تسجيل الدخول هو '/home' كما استخدم في شاشة التسجيل
         '/home': (context) => const HomePage(), 
 
+        '/bible': (context) => BibleFeaturePage(),
+        // '/agpeya': (context) => const AgpeyaFeaturePage(),
+
         '/masses': (context) => const MassesPage(), 
-        //  '/SundaySchoolPage': (context) => const SundaySchoolPage(), 
         '/StorePage': (context) => const StorePage(), 
         '/InventoryPage': (context) => const InventoryPage(), 
-
         '/visit': (context) => const VisitationPage(), 
         '/service': (context) => const VisitationPage(), 
         '/meetings': (context) => const MeetingsPage(), 
         '/activities': (context) =>  ActivitiesPage(), 
         '/events': (context) =>  ActivitiesPage(), 
-        '/about': (context) => const ChurchInfoPage(), 
         '/news': (context) => const NewsPage(), 
         '/profile': (context) => const ProfilePage(), 
-        '/settings': (context) => const SettingsPage(), 
         '/admin': (context) => const AdminPage(), 
         '/OnBoardingScreen': (context) => const OnBoardingScreen(), 
         '/WelcomeScreen': (context) => const WelcomeScreen(), 
-        '/YourGoalScreen': (context) => const YourGoalScreen(), 
         '/UserLoginScreen': (context) => const UserLoginScreen(), 
         '/UserSignUpScreen': (context) => const UserSignUpScreen(), 
-        '/CompleteProfileScreen': (context) => const CompleteProfileScreen(), 
         '/ProfileSkeleton': (context) => const ProfileSkeleton(), 
         
         '/NotificationsPage': (context) => const NotificationsPage(), 
         '/AdminNotificationPage': (context) => const AdminNotificationPage(), 
         '/HowUsViewPage': (context) => const HowUsView(),
-        '/DonationPage': (context) => const DonationPage(),
 
         '/MemberDataEntryScreen': (context) => const MemberDataEntryScreen(),
         '/VisitationScreen': (context) => const VisitationScreen(),
         '/SundaySchoolHome': (context) => const SundaySchoolHome(),
         '/AdminRequestsPage': (context) => const AdminRequestsPage(),
 
+
+        // '/DonationPage': (context) => const DonationPage(),
+        // '/settings': (context) => const SettingsPage(), 
+        // '/about': (context) => const ChurchInfoPage(), 
         
 
 

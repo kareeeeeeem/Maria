@@ -358,7 +358,7 @@ Future<void> _checkAdminStatus(String uid) async {
                         TextFormField(
                           initialValue: currentResponsiblePerson,
                           decoration: const InputDecoration(
-                            labelText: 'الشخص المسؤول',
+                            labelText: 'الشخص المسؤل',
                             border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                           ),
                           onChanged: (value) => currentResponsiblePerson = value,
@@ -688,7 +688,7 @@ class _MeetingCard extends StatelessWidget {
                   _buildDetailRow(Icons.location_on, 'المكان', meeting.location),
                   const Divider(color: AppColors.secondaryGold, thickness: 1, height: 25),
                   // المسؤول
-                  _buildDetailRow(Icons.person_pin, 'المسؤول', meeting.responsiblePerson),
+                  _buildDetailRow(Icons.person_pin, 'المسئول', meeting.responsiblePerson),
 
                   // أزرار الإدارة
                   if (isAdmin) ...[

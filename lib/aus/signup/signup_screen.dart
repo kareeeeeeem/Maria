@@ -260,6 +260,7 @@ Future<void> _signInWithFacebook() async {
 
   // Sign Up Function (صحيحة بالفعل)
   Future<void> _signUp() async {
+    // ⚠️ يتم التحقق من صحة جميع الحقول، بما في ذلك الاسم الرباعي، هنا
     if (!_formKey.currentState!.validate()) return;
     
     // Check if passwords match
@@ -387,7 +388,7 @@ Future<void> _signInWithFacebook() async {
                   const SizedBox(height: 10),
                   // Motto
                   Text(
-                    'لتكون عضواً في تطبيق الكنيسة', 
+                    ' اذا اول مره تفتح التطبيق', 
                     style: TextStyle(
                       // 🌟 لون ذهبي خفيف
                       color: AppColors.accentColor.withOpacity(0.8), 
@@ -398,14 +399,23 @@ Future<void> _signInWithFacebook() async {
                   ),
                   const SizedBox(height: 40),
       
-                  // Full Name Field
+                  // Full Name Field (تم تعديل الـ validator هنا)
                   _buildTextField(
                     controller: _nameController,
-                    label: 'الاسم الكامل', 
+                    label: 'الاسم رباعي', 
                     icon: Icons.person_outline,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'الرجاء إدخال الاسم الكامل';
+                      }
+                      
+                      // 💡 المنطق الجديد: التحقق من عدد الكلمات (الأسماء)
+                      // يقسم السلسلة بواسطة مسافة واحدة أو أكثر (RegExp(r'\s+'))
+                      // ويزيل أي سلاسل فارغة ناتجة عن المسافات المزدوجة أو المسافات البادئة/اللاحقة
+                      final names = value.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+
+                      if (names.length < 4) {
+                        return 'يجب إدخال الاسم رباعيًا ';
                       }
                       return null;
                     },
@@ -415,12 +425,12 @@ Future<void> _signInWithFacebook() async {
                   // Email Field
                   _buildTextField(
                     controller: _emailController,
-                    label: 'البريد الإلكتروني', 
+                    label: 'البريد الإلكتروني ', 
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty || !value.contains('@')) {
-                        return 'الرجاء إدخال بريد إلكتروني صالح';
+                        return 'مثال: name@gmail.com';
                       }
                       return null;
                     },

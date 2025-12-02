@@ -26,11 +26,15 @@ class _AppDrawerState extends State<AppDrawer> {
   
   // 📌 قائمة جميع الأقسام في الدرور
   final List<Map<String, dynamic>> drawerItems = const [
-    {'title': ' الصفحة الرئيسية', 'icon': Icons.home, 'route': '/HomePage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+
+        {'title': 'الإنجيل', 'icon': Icons.menu_book, 'route': '/bible', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+        // {'title': 'الأجبية', 'icon': Icons.brightness_3, 'route': '/agpeya', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+
+    // {'title': ' الصفحة الرئيسية', 'icon': Icons.home, 'route': '/HomePage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' القداسات والعشيات', 'icon': Icons.church, 'route': '/masses', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الخمس خبزات وسمكتين', 'icon': Icons.restaurant, 'route': '/StorePage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الاجتماعات الأسبوعية', 'icon': Icons.people, 'route': '/meetings', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
-    {'title': ' الأنشطة والفعاليات', 'icon': Icons.event_note, 'route': '/activities', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' الأنشطة والرحلات', 'icon': Icons.event_note, 'route': '/activities', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الأخبار والإعلانات', 'icon': Icons.newspaper, 'route': '/news', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' المكتبه', 'icon': Icons.library_add, 'route': '/InventoryPage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الافتقاد', 'icon': Icons.handshake, 'route': '/service', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
@@ -104,9 +108,32 @@ class _AppDrawerState extends State<AppDrawer> {
 
   // 5. دالة بناء الهيدر بناءً على حالة المستخدم
   Widget _buildDrawerHeader(BuildContext context, User? user, bool isLoggedIn) {
-    String name = isLoggedIn 
+    String fullName = isLoggedIn 
         ? (_userExtraData?['fullName'] ?? user?.displayName ?? 'أهلاً بك يا خادم')
         : 'أهلاً بك يا زائر';
+    
+    String name;
+    
+    // 🔴 منطق عرض أول اسمين فقط
+    if (isLoggedIn) {
+      // إزالة المسافات الزائدة وتقسيم الاسم الكامل إلى قائمة كلمات
+      final nameParts = fullName.trim().split(RegExp(r'\s+'));
+      
+      if (nameParts.length >= 2) {
+        // إذا كان هناك اسمان أو أكثر: نأخذ الأول والثاني
+        name = '${nameParts[0]} ${nameParts[1]}';
+      } else if (nameParts.isNotEmpty) {
+        // إذا كان هناك اسم واحد فقط
+        name = nameParts[0];
+      } else {
+        // في حالة الاسم فارغ لسبب ما، نستخدم النص الافتراضي
+        name = 'أهلاً بك يا خادم';
+      }
+    } else {
+      // حالة الزائر
+      name = 'أهلاً بك يا زائر';
+    }
+    
     String emailOrStatus = isLoggedIn 
         ? (user?.email ?? 'مُسجَّل الدخول') 
         : 'اضغط للتسجيل';
@@ -139,7 +166,7 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
             const SizedBox(height: 8),
             Text(
-              name,
+              name, // ⬅️ تم استخدام المتغير 'name' المعدل هنا
               style: const TextStyle(color: AppColors.secondaryGold, fontSize: 18, fontFamily: "Cairo", fontWeight: FontWeight.bold),
             ),
             Text( 

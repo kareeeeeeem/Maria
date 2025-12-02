@@ -102,19 +102,25 @@ class _NewsPageState extends State<NewsPage> {
   
   // 🔴 دالة التحقق من صلاحية المسؤول من Firestore
   // يتم جلب الدور من مسار: users/{uid}
-  Future<void> _checkAdminStatus(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      // القراءة الآمنة لحقل isAdmin، مع افتراض false كقيمة افتراضية
-      final bool isAdmin = doc.data()?['isAdmin'] ?? false;
-      
-      if (mounted) {
-        setState(() {
-          _isAdmin = isAdmin;
-          _isLoading = false; // 🔴 انتهى التحقق
-        });
-      }
-    } catch (e) {
+Future<void> _checkAdminStatus(String uid) async {
+ try {
+ final doc = await _firestore.collection('users').doc(uid).get();
+ final data = doc.data();
+
+ // 1. قراءة كلا الحقلين
+ final bool isAdmin = data?['isAdmin'] ?? false;
+ final bool isNewer = data?['IsNewer'] ?? false; // 👈 إضافة هذا السطر
+
+ // 2. دمج الصلاحيتين: يمكن التعديل إذا كان مديراً أو ناشراً
+ final bool canEdit = isAdmin || isNewer; // 👈 التغيير الجوهري هنا
+
+ if (mounted) {
+ setState(() {
+ _isAdmin = canEdit; // تعيين النتيجة المدمجة للمتغير _isAdmin
+ _isLoading = false;
+ });
+ }
+} catch (e) {
       debugPrint('Admin Status Check Error: $e');
       if (mounted) {
         setState(() {

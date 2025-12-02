@@ -113,7 +113,7 @@ class __VisitationRequestFormState extends State<_VisitationRequestForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const Text(
-              'املأ النموذج وسيتم التواصل معك.',
+              'املأ النموذج وسيتم التواصل معك للافتقاد',
               style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -141,7 +141,7 @@ class __VisitationRequestFormState extends State<_VisitationRequestForm> {
             const SizedBox(height: 15),
 
             _buildTextField(
-              label: 'العنوان بالتفصيل (للتيسير على الخادم)',
+              label: 'العنوان بالتفصيل ',
               icon: Icons.location_on_outlined,
               onSaved: (value) => _address = value,
               maxLines: 2,
@@ -149,7 +149,7 @@ class __VisitationRequestFormState extends State<_VisitationRequestForm> {
             const SizedBox(height: 15),
 
             _buildTextField(
-              label: 'اذا توجد ملاحظة اكتبها مثل: زيارة مريض',
+              label: 'اذا توجد ملاحظة اكتبها ',
               icon: Icons.notes,
               onSaved: (value) => _note = value,
               maxLines: 3,

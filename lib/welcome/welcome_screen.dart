@@ -96,16 +96,3 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 }
-
-// =========================================================================
-// WIDGETS (RoundGradientButton) - Assuming its definition is in its own file
-// =========================================================================
-
-/*
-// ملاحظة: لكي يعمل هذا الملف بشكل مستقل، يجب أن يكون لديك ملف
-// `round_gradient_button.dart` يحتوي على تعريف RoundGradientButton
-// أو قم بنقل تعريف الويدجت إلى هذا الملف (إذا لم يكن موجودًا في الملف الأصلي، يُرجى إضافته).
-// المثال التالي يوضح كيفية استيراده، مع افتراض أن الويدجت RoundGradientButton
-// موجودة في ملف منفصل:
-// import '../../common_widgets/round_gradient_button.dart';
-*/

@@ -27,11 +27,13 @@ const Map<String, dynamic> _firebaseConfig = {
 class AppColors {
   static const Color primaryBlue = Color(0xFF4E342E); // اللون البني الداكن
   static const Color secondaryGold = Color(0xFFFFF8E1); // لون ذهبي فاتح/بيج
-  static const Color backgroundColor = Color(0xFFF5F5F5); 
+  static const Color backgroundColor =  Color(0xFFFFF8F0); 
   static const Color cardColor = Colors.white;
   static const Color textSecondary = Color(0xFF757575);
   static const Color statusVisited = Colors.green; // لون رسالة النجاح
   static const Color textPrimary = Color(0xFF212121);
+    static const Color backgroundBeige = Color(0xFFFFF8F0); 
+
 }
 // نموذج الفصل الدراسي
 class SundaySchoolClass {
@@ -114,6 +116,8 @@ class AttendanceRecord {
   final DateTime date;
   bool isClassPresent; 
   bool isLiturgyPresent; 
+  bool isFather; 
+  
   Map<String, bool> events; 
 
   AttendanceRecord({
@@ -122,6 +126,10 @@ class AttendanceRecord {
     required this.date,
     this.isClassPresent = false,
     this.isLiturgyPresent = false,
+        this.isFather = false,
+
+
+    
     this.events = const {},
   });
 
@@ -133,6 +141,10 @@ class AttendanceRecord {
       date: (data['date'] as Timestamp).toDate(),
       isClassPresent: data['isClassPresent'] ?? false,
       isLiturgyPresent: data['isLiturgyPresent'] ?? false,
+            isFather: data['isFather'] ?? false,
+
+
+      
       events: Map<String, bool>.from(data['events'] ?? {}),
     );
   }
@@ -142,6 +154,9 @@ class AttendanceRecord {
         'date': Timestamp.fromDate(date),
         'isClassPresent': isClassPresent,
         'isLiturgyPresent': isLiturgyPresent,
+        'isFather': isFather,
+
+
         'events': events,
       };
 }
@@ -159,8 +174,7 @@ class SundaySchoolService {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return null;
     // المسار الصحيح: artifacts/{appId}/users/{userId}/sunday_school_{collectionName}
-    return _db.collection('artifacts/${__app_id}/users/$userId/sunday_school_$collectionName');
-  }
+return _db.collection('artifacts/${__app_id}/public/data/sunday_school_$collectionName');  }
 
   // المراجع للمجموعات
   CollectionReference? get _classesCollection => _getCollectionDirect('classes');
@@ -171,6 +185,38 @@ class SundaySchoolService {
   // ------------------------------------
   // أ. إدارة الفصول (Classes CRUD)
   // ------------------------------------
+
+// ... في كلاس SundaySchoolService
+
+// مرجع لمجموعة الصلاحيات
+CollectionReference? get _userRolesCollection {
+  final userId = _auth.currentUser?.uid;
+  if (userId == null) return null;
+  // المسار: artifacts/{appId}/public/data/user_roles
+  return _db.collection('users');
+}
+
+// دالة جلب حالة الـ high_admin
+Stream<bool> getHighAdminStatus() {
+  final userId = _auth.currentUser?.uid;
+  if (userId == null) {
+    return Stream.value(false);
+  }
+  final userDocRef = _db.collection('users').doc(userId);
+
+  
+  return _userRolesCollection!.doc(userId).snapshots().map((doc) {
+    if (doc.exists) {
+      final data = doc.data() as Map<String, dynamic>?;
+      // افتراض أن حقل الصلاحية اسمه 'high_admin'
+return (data?['highAdminSundaySchool'] is bool) ? data!['highAdminSundaySchool'] : false;
+    }
+    
+    return false;
+  });
+}
+
+
 
   Future<void> addClass(SundaySchoolClass classItem) async {
     try {
@@ -207,6 +253,19 @@ class SundaySchoolService {
       rethrow;
     }
   }
+Stream<List<AttendanceRecord>> getAttendanceForMonth(
+    String studentId, DateTime start, DateTime end) {
+  if (_attendanceCollection == null) return Stream.value([]);
+  
+  return _attendanceCollection!
+      .where('studentId', isEqualTo: studentId)
+      .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+      .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => AttendanceRecord.fromFirestore(doc))
+          .toList());
+}
 
   // الحصول على قائمة الفصول مرتبة حسب 'order' محلياً
   Stream<List<SundaySchoolClass>> getClasses() {
@@ -306,9 +365,7 @@ class SundaySchoolService {
       rethrow;
     }
   }
-
-  // الحصول على سجل حضور تلميذ في يوم معين (للتحديث)
-  Future<AttendanceRecord?> getAttendanceForDay(String studentId, DateTime date) async {
+Future<AttendanceRecord?> getAttendanceForDay(String studentId, DateTime date) async {
     if (_attendanceCollection == null) {
       return null;
     }
@@ -326,7 +383,28 @@ class SundaySchoolService {
       log('خطأ في جلب سجل الحضور: $e');
       return null;
     }
-  }
+}
+  // الحصول على سجل حضور تلميذ في يوم معين (للتحديث)
+Stream<AttendanceRecord?> getAttendanceStreamForDay(String studentId, DateTime date) {
+    if (_attendanceCollection == null) {
+        return Stream.value(null);
+    }
+    
+    final dateString = '${date.year}-${date.month}-${date.day}';
+    final recordId = '${studentId}_$dateString';
+    
+    // 💡 استخدام snapshots().map ليتم تحديث الواجهة فوراً عند أي تغيير في هذا المستند
+    return _attendanceCollection!.doc(recordId).snapshots().map((doc) {
+        if (doc.exists) {
+            return AttendanceRecord.fromFirestore(doc);
+        }
+        // إرجاع قيمة null أو Record افتراضي لتجنب الأخطاء
+        return null;
+    }).handleError((e) {
+        log('خطأ في جلب سجل الحضور (Stream): $e');
+        return null;
+    });
+}
 }
 
 // ==============================================================================
@@ -335,90 +413,51 @@ class SundaySchoolService {
 
 final SundaySchoolService _service = SundaySchoolService();
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  try {
-    // تهيئة Firebase
-    await Firebase.initializeApp(options: FirebaseOptions(
-        apiKey: _firebaseConfig['apiKey']!,
-        appId: _firebaseConfig['appId']!,
-        messagingSenderId: _firebaseConfig['messagingSenderId']!,
-        projectId: _firebaseConfig['projectId']!,
-    ));
-    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
-    FirebaseFirestore.setLoggingEnabled(true);
-    
-    // محاولة تسجيل الدخول باستخدام الرمز المخصص أو كمجهول
-    final auth = FirebaseAuth.instance;
-    if (__initial_auth_token.isNotEmpty) {
-      await auth.signInWithCustomToken(__initial_auth_token);
-    } else {
-      await auth.signInAnonymously();
-    }
-  } catch (e) {
-    log('Firebase Initialization/Auth Error. Check your Firebase config: $e');
-  }
-
-
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'مدارس الأحد',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // لون أساسي مبهج (أزرق سماوي/أخضر)
-        primarySwatch: Colors.cyan, 
-        primaryColor: const Color(0xFF00BCD4), 
-        scaffoldBackgroundColor: Colors.grey.shade50,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF00ACC1), // أزرق سماوي أغمق
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 6,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        ),
-        floatingActionButtonTheme: FloatingActionButtonThemeData(
-          backgroundColor: Colors.cyan.shade600,
-          foregroundColor: Colors.white,
-          elevation: 8,
-        ),
-        fontFamily: 'Inter', // افتراضياً
-      ),
-      home: const SundaySchoolHome(),
-    );
-  }
-}
-
 class SundaySchoolHome extends StatefulWidget {
   const SundaySchoolHome({super.key});
 
   @override
   State<SundaySchoolHome> createState() => _SundaySchoolHomeState();
 }
-
-class _SundaySchoolHomeState extends State<SundaySchoolHome> with SingleTickerProviderStateMixin {
+class _SundaySchoolHomeState extends State<SundaySchoolHome> with TickerProviderStateMixin {
   late TabController _tabController;
   User? _user;
-
-  @override
+  int _currentLength = 3; // تتبع الطول الحالي
+@override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // تهيئة مبدئية للطول الأقصى (3 تبويبات)
+    _tabController = TabController(length: _currentLength, vsync: this);
     
     FirebaseAuth.instance.authStateChanges().listen((user) {
-      setState(() {
-        _user = user;
-      });
+      if (mounted) {
+        setState(() {
+          _user = user;
+        });
+      }
     });
+  }
+
+  // دالة مساعدة لإعادة تهيئة TabController بأمان
+  void _updateTabController(int newLength) {
+    if (newLength <= 0) return; // منع الأخطاء إذا كان الطول صفراً
+
+    // ⚠️ يتم التحديث فقط إذا تغير الطول
+    if (_currentLength != newLength) {
+      // 1. التخلص من الكنترولر القديم
+      _tabController.dispose();
+      
+      // 2. تحديث الطول وتعيين كنترولر جديد
+      _currentLength = newLength;
+      _tabController = TabController(length: _currentLength, vsync: this);
+      
+      // 3. إعادة رسم الواجهة بالكنترولر الجديد
+      if (mounted) {
+        
+        // لا نحتاج لـ setState هنا لأننا استدعينا dispose
+        // وaddPostFrameCallback في build سيؤدي لـ setState
+      }
+    }
   }
 
   @override
@@ -426,113 +465,92 @@ class _SundaySchoolHomeState extends State<SundaySchoolHome> with SingleTickerPr
     _tabController.dispose();
     super.dispose();
   }
+  
 
-  @override
-  Widget build(BuildContext context) {
+@override
+Widget build(BuildContext context) {
     if (_user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF00ACC1))),
-      );
+        return const Scaffold(
+            backgroundColor: AppColors.backgroundBeige,
+            body: Center(child: CircularProgressIndicator(color: AppColors.primaryBlue)),
+        );
     }
     
-    final uid = _user!.uid;
-
-    return Scaffold(
-      appBar: AppBar(
-                title: const Text('مدارس الاحد'  , style: TextStyle(color: AppColors.secondaryGold)),                 centerTitle: true,
-
-
-        backgroundColor: AppColors.primaryBlue,
-
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, right: 15),
-            child: Center(
-              child: Tooltip(
-                message: 'معرّف المستخدم (UID) الحالي',
-                child: Text(
-                  'UID: ${uid.substring(0, 8)}...', 
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  
+    // 💡 استخدام StreamBuilder لمراقبة الصلاحية
+    return StreamBuilder<bool>(
+        stream: _service.getHighAdminStatus(),
+        initialData: false, // قيمة مبدئية
+        builder: (context, snapshot) {
+            final isHighAdmin = snapshot.data ?? false; // حالة الصلاحية
+            
+            // تحديد قائمة علامات التبويب والشاشات
+            final List<Tab> adminTabs = [ 
+                const Tab(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.class_, color: AppColors.secondaryGold), Text('الفصول', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 12))])),
+            ];
+            final List<Widget> adminScreens = [
+                ClassesScreen(),
+            ];
+            
+            final List<Tab> regularTabs = [
+                const Tab(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.check_box_outlined, color: AppColors.secondaryGold), Text('الحضور', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 12))])),
+                const Tab(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.cake_outlined, color: AppColors.secondaryGold), Text('أعياد الميلاد', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 12))])),
+            ];
+            final List<Widget> regularScreens = [
+                const AttendanceScreen(),
+                const BirthdaysScreen(),
+            ];
+            
+            // تجميع القوائم حسب الصلاحية
+           final List<Tab> allTabs = isHighAdmin ? [...adminTabs, ...regularTabs] : regularTabs;
+            final List<Widget> allScreens = isHighAdmin ? [...adminScreens, ...regularScreens] : regularScreens;
+            
+            // ✅ استخدام الدالة المساعدة لإعادة التهيئة بأمان خارج شجرة البناء المباشرة
+            // هذا سيؤدي إلى إعادة تشغيل الـ build في الدورة التالية بالـ _currentLength المحدث
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+                 // يجب التأكد من استدعاء setState هنا إذا لم تقم _updateTabController بذلك
+                 // وبما أنها لا تستدعي setState الآن، يجب أن نفعّلها هنا لتحديث الواجهة.
+                if (allTabs.length != _currentLength) {
+                    _updateTabController(allTabs.length);
+                    if (mounted) {
+                        setState(() {}); // لإجبار الواجهة على استخدام الطول الجديد في الدورة التالية
+                    }
+                }
+            });
+            
+            // 🛑 الشرط الآمن: يتم العرض فقط إذا كان طول الكنترولر متطابقاً مع عدد الـ Tabs الفعلية
+            final bool isLengthMatch = allTabs.length == _currentLength;
+            if (!isLengthMatch) {
+              // عرض مؤشر التحميل أثناء الانتقال بين الصلاحيات/الأطوال
+              return const Scaffold(
+                // ... (عرض مؤشر تحميل مؤقت)
+                body:  Center(child: CircularProgressIndicator()),
+              );
+            }
+            return Scaffold(
+                backgroundColor: AppColors.backgroundBeige,
+                appBar: AppBar(
+                    title: const Text('مدارس الاحد', style: TextStyle(color: AppColors.secondaryGold)),
+                    centerTitle: true,
+                    backgroundColor: AppColors.primaryBlue,
+                    // 1. عرض TabBar فقط إذا كان الطول متطابقاً
+                    bottom: isLengthMatch ? TabBar(
+                        controller: _tabController,
+                        indicatorColor: Colors.white,
+                        labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
+                        tabs: allTabs, 
+                    ) : null, // إذا لم يتساو الطول، لا تعرض الـ TabBar مؤقتاً
                 ),
-              ),
-            ),
-          )
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
-        tabs: const [
-      Tab(
-        // ✅ استخدم خاصية child لدمج الأيقونة والنص وتخصيص الأنماط
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // الأيقونة (لونها AppColors.secondaryGold)
-            Icon(Icons.class_, color: AppColors.secondaryGold), 
-            // النص (لونه أبيض)
-            const Text(
-              'الفصول', 
-              style: TextStyle(
-                // يمكنك استخدام Colors.white بدلاً من الـ Hex
-                color: Color(0xFFFFFFFF), 
-                fontSize: 12, // حجم خط مناسب للـ Tab
-              ),
-            ),
-          ],
-        ),
-      ),  
-
-      Tab(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // الأيقونة (لونها AppColors.secondaryGold)
-              Icon(Icons.check_box_outlined, color: AppColors.secondaryGold),
-              // النص (لونه أبيض)
-              const Text(
-                'الحضور', 
-                style: TextStyle(
-                  color: Color(0xFFFFFFFF), 
-                  fontSize: 12, 
-                ),
-              ),
-            ],
-          ),
-        ),    
-          
-      Tab(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // الأيقونة (لونها AppColors.secondaryGold)
-              Icon(Icons.cake_outlined, color: AppColors.secondaryGold),
-              // النص (لونه أبيض)
-              const Text(
-                'أعياد الميلاد', 
-                style: TextStyle(
-                  color: Color(0xFFFFFFFF), 
-                  fontSize: 12, 
-                ),
-              ),
-            ],
-          ),
-        ),      
-      ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          ClassesScreen(),
-          AttendanceScreen(),
-          BirthdaysScreen(),
-        ],
-      ),
+                // 2. عرض TabBarView فقط إذا كان الطول متطابقاً
+                body: isLengthMatch ? TabBarView(
+                    controller: _tabController,
+                    children: allScreens, 
+                ) : const Center(child: CircularProgressIndicator()), // أثناء التحديث، نعرض مؤشر تحميل
+            );
+        },
     );
-  }
+}
+
 }
 
 // ==============================================================================
@@ -638,6 +656,8 @@ class ClassesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
      return Scaffold(
+              backgroundColor: AppColors.backgroundBeige, // ✅ تم تطبيق الخلفية البيج
+
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'addClassBtn',
         onPressed: () => _showClassDialog(context),
@@ -654,6 +674,7 @@ class ClassesScreen extends StatelessWidget {
           if (classes.isEmpty) {
             return Center(
               child: Column(
+                
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text('لم يتم إضافة أي فصول بعد.', style: TextStyle(fontSize: 18, color: Colors.grey)),
@@ -673,6 +694,7 @@ class ClassesScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final classItem = classes[index];
               return Card(
+                
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 elevation: 6,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -871,11 +893,13 @@ class StudentsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+                            backgroundColor: AppColors.backgroundBeige, // ✅ تم تطبيق الخلفية البيج
+
       appBar: AppBar(
                 backgroundColor: AppColors.primaryBlue,
                  centerTitle: true,
 
-        title: Text('تلاميذ فصل: ${classItem.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(' ${classItem.name} : تلاميذ فصل', style: TextStyle(color: AppColors.secondaryGold)),
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'addStudentBtn',
@@ -902,6 +926,8 @@ class StudentsScreen extends StatelessWidget {
           }
 
           return ListView.builder(
+            
+            
             padding: const EdgeInsets.only(bottom: 80, top: 10),
             itemCount: students.length,
             itemBuilder: (context, index) {
@@ -941,10 +967,12 @@ class StudentsScreen extends StatelessWidget {
   }
 }
 
+// ==============================================================================
+// 3. شاشة الحضور + التقرير الشهري
+// ==============================================================================
 
-// ==============================================================================
-// الشاشة 3: تسجيل الحضور
-// ==============================================================================
+enum AttendanceType { classPresent, liturgyPresent, father }
+
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -953,15 +981,24 @@ class AttendanceScreen extends StatefulWidget {
   State<AttendanceScreen> createState() => _AttendanceScreenState();
 }
 
-class _AttendanceScreenState extends State<AttendanceScreen> {
+class _AttendanceScreenState extends State<AttendanceScreen>
+    with SingleTickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
   String? _selectedClassId;
   List<SundaySchoolClass> _classes = [];
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _fetchClasses();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _fetchClasses() {
@@ -969,7 +1006,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted) {
         setState(() {
           _classes = classes;
-          // تعيين الفصل الأول كفصل افتراضي
           if (_selectedClassId == null && _classes.isNotEmpty) {
             _selectedClassId = _classes.first.id;
           }
@@ -978,26 +1014,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  // دالة لتغيير تاريخ الحضور
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      builder: (context, child) {
-        // تصميم منتقي التاريخ
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor, // لون الثيم
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -1006,33 +1028,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // دالة لتسجيل الحضور
-  void _toggleAttendance(Student student, bool isClass, bool value) async {
+  void _toggleAttendance(Student student, AttendanceType type, bool value) async {
     final dateString = '${_selectedDate.year}-${_selectedDate.month}-${_selectedDate.day}';
     final recordId = '${student.id}_$dateString';
 
-    AttendanceRecord? existingRecord = await _service.getAttendanceForDay(student.id, _selectedDate);
+    AttendanceRecord? existingRecord =
+        await _service.getAttendanceForDay(student.id, _selectedDate);
 
-    AttendanceRecord record;
-    if (existingRecord != null) {
-      record = existingRecord;
-    } else {
-      record = AttendanceRecord(
-        id: recordId,
-        studentId: student.id,
-        date: _selectedDate,
-      );
-    }
+    AttendanceRecord record = existingRecord ??
+        AttendanceRecord(
+          id: recordId,
+          studentId: student.id,
+          date: _selectedDate,
+        );
 
-    if (isClass) {
-      record.isClassPresent = value;
-    } else {
-      record.isLiturgyPresent = value;
+    switch (type) {
+      case AttendanceType.classPresent:
+        record.isClassPresent = value;
+        break;
+      case AttendanceType.liturgyPresent:
+        record.isLiturgyPresent = value;
+        break;
+      case AttendanceType.father:
+        record.isFather = value;
+        break;
     }
 
     try {
       await _service.recordAttendance(record);
-      // لا تحتاج لـ setState هنا، لأن StreamBuilder سيتولى التحديث
     } catch (e) {
       log('Failed to record attendance: $e');
     }
@@ -1040,7 +1063,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // تنسيق التاريخ ليكون سهل القراءة
+    return Column(
+      children: [
+        // Tabs
+        TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.blue,
+          tabs: const [
+            Tab(text: 'تسجيل الحضور'),
+            Tab(text: 'التقرير الشهري'),
+          ],
+        ),
+
+       Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAttendanceTab(context),
+              // ✅ تمرير _selectedClassId إلى MonthlyReportScreen
+              MonthlyReportScreen(classId: _selectedClassId), 
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttendanceTab(BuildContext context) {
     final formattedDate = "${_selectedDate.year}-${_selectedDate.month}-${_selectedDate.day}";
     final selectedClass = _classes.firstWhere(
       (c) => c.id == _selectedClassId,
@@ -1049,16 +1098,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Column(
       children: [
-        // شريط التحكم في التاريخ والفصل
+        // شريط التحكم
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.05), 
+            color: Theme.of(context).primaryColor.withOpacity(0.05),
             border: const Border(bottom: BorderSide(color: Color(0xFF00ACC1), width: 2)),
           ),
           child: Row(
             children: [
-              // اختيار التاريخ
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context),
@@ -1068,48 +1116,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade300),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 1,
-                          blurRadius: 3,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.calendar_month, color: Theme.of(context).primaryColor, size: 20),
+                        Icon(Icons.calendar_month, color: Theme.of(context).primaryColor),
                         const SizedBox(width: 8),
-                        Text(
-                          formattedDate,
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
+                        Text(formattedDate,
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-
-              // اختيار الفصل
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: _selectedClassId,
                   decoration: InputDecoration(
                     labelText: 'اختيار الفصل',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    labelStyle: TextStyle(color: Colors.grey.shade600),
                   ),
                   items: _classes.map((c) {
-                    return DropdownMenuItem(
-                      value: c.id,
-                      child: Text(c.name),
-                    );
+                    return DropdownMenuItem(value: c.id, child: Text(c.name));
                   }).toList(),
                   onChanged: (value) {
                     setState(() {
@@ -1122,49 +1153,43 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
 
-        // قائمة التلاميذ وسجلات الحضور
-        Expanded(
-          child: _selectedClassId == null || _classes.isEmpty
-              ? const Center(child: Text('الرجاء اختيار فصل لبدء تسجيل الحضور.'))
+      Expanded(
+          child: _selectedClassId == null
+              ? const Center(child: Text('اختر فصلاً أولاً'))
               : StreamBuilder<List<Student>>(
                   stream: _service.getStudentsByClass(_selectedClassId!),
                   builder: (context, studentSnapshot) {
-                    if (studentSnapshot.connectionState == ConnectionState.waiting) {
+                    if (!studentSnapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (studentSnapshot.hasError) {
-                      return Center(child: Text('خطأ في جلب التلاميذ: ${studentSnapshot.error}'));
-                    }
-                    final students = studentSnapshot.data ?? [];
-                    if (students.isEmpty) {
-                      return Center(
-                        child: Text('لا يوجد تلاميذ في فصل ${selectedClass.name}.', style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                      );
-                    }
 
-                    // يتم هنا بناء كل عنصر في القائمة
+                    final students = studentSnapshot.data!;
+                    final dateString =
+                        '${_selectedDate.year}-${_selectedDate.month}-${_selectedDate.day}';
+
                     return ListView.builder(
                       itemCount: students.length,
                       itemBuilder: (context, index) {
                         final student = students[index];
-                        final dateString = '${_selectedDate.year}-${_selectedDate.month}-${_selectedDate.day}';
-                        
-                        return FutureBuilder<AttendanceRecord?>(
-                          future: _service.getAttendanceForDay(student.id, _selectedDate),
+
+                        // 🚀 التعديل الحاسم: استخدام StreamBuilder بدلاً من FutureBuilder
+                        return StreamBuilder<AttendanceRecord?>(
+                          stream: _service.getAttendanceStreamForDay(student.id, _selectedDate),
                           builder: (context, attendanceSnapshot) {
-                            final record = attendanceSnapshot.data ?? 
-                                AttendanceRecord(id: '${student.id}_$dateString', studentId: student.id, date: _selectedDate);
                             
-                            // 💡 حركة الدخول التدريجي للعنصر بمجرد تحميل بيانات الحضور الخاصة به
-                            return AnimatedOpacity(
-                              opacity: attendanceSnapshot.connectionState == ConnectionState.done ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 500),
-                              child: AttendanceItem(
+                            // لا نستخدم انتظار، بل نستخدم آخر البيانات المتاحة
+                            final record = attendanceSnapshot.data ??
+                                AttendanceRecord(
+                                    id: '${student.id}_$dateString',
+                                    studentId: student.id,
+                                    date: _selectedDate);
+
+                            return AttendanceItem(
                                 student: student,
                                 record: record,
-                                onToggle: (isClass, value) => _toggleAttendance(student, isClass, value),
-                              ),
-                            );
+                                onToggle: (type, value) =>
+                                    _toggleAttendance(student, type, value),
+                              );
                           },
                         );
                       },
@@ -1177,11 +1202,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 }
 
-// عنصر قائمة الحضور مع الحركة
+// ==============================================================================
+// عنصر التلميذ في الحضور
+// ==============================================================================
 class AttendanceItem extends StatelessWidget {
   final Student student;
   final AttendanceRecord record;
-  final Function(bool isClass, bool value) onToggle;
+  final Function(AttendanceType type, bool value) onToggle;
 
   const AttendanceItem({
     super.key,
@@ -1190,10 +1217,9 @@ class AttendanceItem extends StatelessWidget {
     required this.onToggle,
   });
 
-  // دالة مساعدة لبناء زر الحضور المتحرك
   Widget _buildToggleButton({
     required String label,
-    required bool isClass,
+    required AttendanceType type,
     required bool isPresent,
     required Color activeColor,
   }) {
@@ -1201,34 +1227,33 @@ class AttendanceItem extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
         child: InkWell(
-          onTap: () => onToggle(isClass, !isPresent),
-          // 💡 استخدام AnimatedContainer لإضافة حركة عند تغيير الحالة
+          onTap: () => onToggle(type, !isPresent),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               color: isPresent ? activeColor : Colors.grey[100],
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isPresent ? activeColor.withOpacity(0.5) : Colors.grey[400]!,
+                color: isPresent ? activeColor.withOpacity(0.5) : Colors.grey.shade400,
                 width: isPresent ? 2 : 1,
               ),
-              boxShadow: isPresent ? [
-                BoxShadow(
-                  color: activeColor.withOpacity(0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ] : null,
+              boxShadow: isPresent
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withOpacity(0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      )
+                    ]
+                  : null,
             ),
             child: Text(
-              isPresent ? 'حاضر' : label,
+              isPresent ? 'done' : label,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isPresent ? Colors.white : Colors.grey[700],
-                fontWeight: isPresent ? FontWeight.w900 : FontWeight.normal,
-                fontSize: 14,
+                fontWeight: isPresent ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
@@ -1244,33 +1269,30 @@ class AttendanceItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // اسم التلميذ
             Expanded(
               flex: 2,
-              child: Text(
-                student.name,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black87),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(student.name,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
-            
             const SizedBox(width: 10),
-
-            // زر حضور الفصل (أزرق)
+            _buildToggleButton(
+              label: 'الاعتراف',
+              type: AttendanceType.father,
+              isPresent: record.isFather,
+              activeColor: const Color.fromARGB(255, 222, 209, 28),
+            ),
             _buildToggleButton(
               label: 'الفصل',
-              isClass: true,
+              type: AttendanceType.classPresent,
               isPresent: record.isClassPresent,
               activeColor: Colors.blue.shade600,
             ),
-
-            // زر حضور القداس (بنفسجي)
             _buildToggleButton(
               label: 'القداس',
-              isClass: false,
+              type: AttendanceType.liturgyPresent,
               isPresent: record.isLiturgyPresent,
               activeColor: Colors.purple.shade600,
             ),
@@ -1280,125 +1302,347 @@ class AttendanceItem extends StatelessWidget {
     );
   }
 }
+// ==============================================================================
+// 4. التقرير الشهري (تعديل: استلام classId)
+// ==============================================================================
+class MonthlyReportScreen extends StatefulWidget {
+  // ✅ إضافة classId كمتطلب
+  final String? classId; 
+  const MonthlyReportScreen({super.key, required this.classId});
+
+  @override
+  State<MonthlyReportScreen> createState() => _MonthlyReportScreenState();
+}
+
+class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
+  DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
+
+  @override
+  Widget build(BuildContext context) {
+    // ⚠️ لا يمكن عرض التقرير بدون تحديد فصل
+    if (widget.classId == null || widget.classId!.isEmpty) {
+        return const Center(child: Text('الرجاء اختيار فصل لعرض تقريره الشهري.', style: TextStyle(fontSize: 16, color: Colors.grey)));
+    }
+
+    final startOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
+    // الحصول على آخر يوم في الشهر
+    final endOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0); 
+
+    return Column(
+      children: [
+        // شريط اختيار الشهر
+        Container(
+          padding: const EdgeInsets.all(12),
+          color: Colors.grey.shade100,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios),
+                onPressed: () {
+                  setState(() {
+                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                  });
+                },
+              ),
+              Text(
+                '${_currentMonth.year} - ${_currentMonth.month.toString().padLeft(2, '0')}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios),
+                onPressed: () {
+                  // منع التنقل للمستقبل
+                  if (_currentMonth.month < DateTime.now().month || _currentMonth.year < DateTime.now().year) {
+                    setState(() {
+                        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+
+       Expanded(
+          // ✅ يجب أن يحتوي Expanded على وسيط child واحد
+          child: StreamBuilder<List<Student>>( // ✅ StreamBuilder هو الـ child
+            // ✅ وسيط 'stream' خاص بـ StreamBuilder
+            stream: _service.getStudentsByClass(widget.classId!), 
+            // ✅ وسيط 'builder' خاص بـ StreamBuilder
+            builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('خطأ في جلب بيانات التلاميذ: ${snapshot.error}'));
+            }
+
+            final students = snapshot.data ?? [];
+
+            if (students.isEmpty) {
+              return const Center(
+                  child: Text('لا يوجد تلاميذ في هذا الفصل لعرض التقرير.', style: TextStyle(fontSize: 16)));
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(10),
+              itemCount: students.length,
+              itemBuilder: (context, index) {
+                final student = students[index];
+
+                return StreamBuilder<List<AttendanceRecord>>(
+                  // جلب الحضور لهذا التلميذ في الشهر المحدد
+                  stream: _service.getAttendanceForMonth(student.id, startOfMonth, endOfMonth),
+                  builder: (context, attSnapshot) {
+                    if (!attSnapshot.hasData) {
+                      return const SizedBox();
+                    }
+
+                    final records = attSnapshot.data!;
+
+                    // حساب الغياب لكل نوع
+                    int classAbsent = records.where((r) => !r.isClassPresent).length;
+                    int liturgyAbsent = records.where((r) => !r.isLiturgyPresent).length;
+                    int fatherAbsent = records.where((r) => !r.isFather).length;
+                     // تم حذف دالة print هنا لتجنب ظهورها في الكونسول
+                    
+                    // إظهار فقط إذا غاب 3 مرات أو أكثر في أي نوع
+                    if (classAbsent < 3 && liturgyAbsent < 3 && fatherAbsent < 3) {
+                      // ✅ تم تغييرها إلى SizedBox.shrink() لأداء أفضل
+                      return const SizedBox.shrink(); 
+                    }
+
+                    return Card(
+                      // ... (تصميم البطاقة لم يتغير)
+                      elevation: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              student.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blueGrey),
+                            ),
+                            const SizedBox(height: 6),
+                            if (classAbsent >= 3)
+                              Text('- الغياب عن الفصل: $classAbsent مرات',
+                                  style: const TextStyle(color: Colors.red)),
+                            if (liturgyAbsent >= 3)
+                              Text('- الغياب عن القداس: $liturgyAbsent مرات',
+                                  style: const TextStyle(color: Colors.red)),
+                            if (fatherAbsent >= 3)
+                              const Text('- الغياب عن الاعتراف: 1 مره',
+                                  style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+        )
+      ],
+    );
+  }
+}
 
 // ==============================================================================
 // الشاشة 4: أعياد الميلاد
 // ==============================================================================
+// ==============================================================================
+// الشاشة 4: أعياد الميلاد (تعديل: إضافة فلترة الفصول)
+// ==============================================================================
 
-class BirthdaysScreen extends StatelessWidget {
+class BirthdaysScreen extends StatefulWidget {
   const BirthdaysScreen({super.key});
 
-  // دالة مساعدة لحساب كم يوماً متبقياً على عيد الميلاد
+  @override
+  State<BirthdaysScreen> createState() => _BirthdaysScreenState();
+}
+
+class _BirthdaysScreenState extends State<BirthdaysScreen> {
+  // ✅ ID للفصل المحدد، القيمة الافتراضية 'ALL' لجميع الفصول
+  String? _selectedClassId = 'ALL'; 
+  List<SundaySchoolClass> _classes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchClasses();
+  }
+
+  void _fetchClasses() {
+    _service.getClasses().listen((classes) {
+      if (mounted) {
+        setState(() {
+          _classes = classes;
+        });
+      }
+    });
+  }
+  
+  // دالة مساعدة لحساب كم يوماً متبقياً على عيد الميلاد (كما هي)
   int _daysUntilBirthday(DateTime? dob) {
+    // ... (نفس المنطق السابق) ...
     if (dob == null) return -1;
     final now = DateTime.now();
     
-    // إنشاء تاريخ ميلاد هذه السنة
     var nextBirthday = DateTime(now.year, dob.month, dob.day);
 
-    // إذا كان تاريخ الميلاد قد مر في هذه السنة، اضف سنة
     if (nextBirthday.isBefore(now) && nextBirthday.day != now.day) {
       nextBirthday = DateTime(now.year + 1, dob.month, dob.day);
     }
     
     final difference = nextBirthday.difference(now);
-    // إذا كان عيد الميلاد اليوم، تكون النتيجة 0
     if (nextBirthday.day == now.day && nextBirthday.month == now.month) return 0;
 
     return difference.inDays;
   }
 
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Student>>(
-      stream: _service.getAllStudents(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('خطأ في جلب البيانات: ${snapshot.error}'));
-        }
+    return Column(
+      children: [
+        // ✅ شريط اختيار الفصل
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: DropdownButtonFormField<String>(
+            value: _selectedClassId,
+            decoration: InputDecoration(
+              labelText: 'فلترة حسب الفصل',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: AppColors.cardColor,
+            ),
+            // ✅ إضافة خيار "كل الفصول"
+            items: [
+              const DropdownMenuItem(value: 'ALL', child: Text('كل الفصول')),
+              ..._classes.map((c) {
+                return DropdownMenuItem(value: c.id, child: Text(c.name));
+              }).toList(),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _selectedClassId = value;
+              });
+            },
+          ),
+        ),
 
-        final allStudents = snapshot.data ?? [];
-        
-        // تصفية وحساب وفرز أعياد الميلاد القادمة خلال 90 يوماً
-        var upcomingBirthdays = allStudents
-            .where((s) => s.dob != null)
-            .map((s) {
-              final days = _daysUntilBirthday(s.dob);
-              return {'student': s, 'daysLeft': days};
-            })
-            .where((item) => item['daysLeft'] as int >= 0 && item['daysLeft'] as int <= 90)
-            .toList();
+        Expanded( // ✅ Expanded لملء المساحة
+          child: StreamBuilder<List<Student>>(
+            // ✅ نستخدم getAllStudents لجلب كل التلاميذ
+            stream: _service.getAllStudents(), 
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('خطأ في جلب البيانات: ${snapshot.error}'));
+              }
 
-        // فرز حسب الأيام المتبقية (الأقرب أولاً)
-        upcomingBirthdays.sort((a, b) => (a['daysLeft'] as int).compareTo(b['daysLeft'] as int));
+              var allStudents = snapshot.data ?? [];
+              
+              // 1. تطبيق الفلترة حسب الفصل المختار
+              if (_selectedClassId != 'ALL') {
+                allStudents = allStudents.where((s) => s.classId == _selectedClassId).toList();
+              }
+              
+              // 2. تصفية وحساب وفرز أعياد الميلاد القادمة خلال 60 يوماً
+              var upcomingBirthdays = allStudents
+                  .where((s) => s.dob != null)
+                  .map((s) {
+                    final days = _daysUntilBirthday(s.dob);
+                    return {'student': s, 'daysLeft': days};
+                  })
+                  .where((item) => item['daysLeft'] as int >= 0 && item['daysLeft'] as int <= 60)
+                  .toList();
 
-        if (upcomingBirthdays.isEmpty) {
-          return const Center(
-            child: Text('لا توجد أعياد ميلاد قادمة في الـ 90 يوماً القادمة.', style: TextStyle(fontSize: 16, color: Colors.grey)),
-          );
-        }
+              // 3. فرز حسب الأيام المتبقية (الأقرب أولاً)
+              upcomingBirthdays.sort((a, b) => (a['daysLeft'] as int).compareTo(b['daysLeft'] as int));
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(10),
-          itemCount: upcomingBirthdays.length,
-          itemBuilder: (context, index) {
-            final item = upcomingBirthdays[index];
-            final student = item['student'] as Student;
-            final daysLeft = item['daysLeft'] as int;
-
-            String subtitle;
-            IconData icon;
-            Color color;
-
-            if (daysLeft == 0) {
-              subtitle = 'يحتفل اليوم!';
-              icon = Icons.star;
-              color = Colors.red.shade600;
-            } else if (daysLeft <= 7) {
-              subtitle = 'متبقي ${daysLeft} أيام (قريباً جداً)';
-              icon = Icons.celebration;
-              color = Colors.orange.shade600;
-            } else {
-              subtitle = 'متبقي ${daysLeft} أيام';
-              icon = Icons.cake;
-              color = Colors.green.shade600;
-            }
-
-            // 💡 تصميم بطاقة عيد ميلاد مبهرة
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              elevation: 6,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: color.withOpacity(0.5), width: 2),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                leading: Icon(icon, color: color, size: 35),
-                title: Text(
-                  student.name,
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.blueGrey.shade800),
-                ),
-                subtitle: Text(
-                  subtitle,
-                  style: TextStyle(fontStyle: FontStyle.italic, color: color, fontWeight: FontWeight.w600),
-                ),
-                trailing: Chip(
-                  label: Text(
-                    '${student.dob!.day}/${student.dob!.month}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+              if (upcomingBirthdays.isEmpty) {
+                return Center(
+                  child: Text(
+                    _selectedClassId == 'ALL' 
+                      ? 'لا توجد أعياد ميلاد قادمة في الـ 60 يوماً القادمة.'
+                      : 'لا توجد أعياد ميلاد قادمة في هذا الفصل.', 
+                    style: TextStyle(fontSize: 16, color: Colors.grey)
                   ),
-                  backgroundColor: color,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                ),
-              ),
-            );
-          },
-        );
-      },
+                );
+              }
+
+              // ... (بناء ListView.builder لعرض البطاقات) ...
+              return ListView.builder(
+                padding: const EdgeInsets.all(10),
+                itemCount: upcomingBirthdays.length,
+                itemBuilder: (context, index) {
+                  final item = upcomingBirthdays[index];
+                  final student = item['student'] as Student;
+                  final daysLeft = item['daysLeft'] as int;
+
+                  String subtitle;
+                  IconData icon;
+                  Color color;
+
+                  if (daysLeft == 0) {
+                    subtitle = 'يحتفل اليوم!';
+                    icon = Icons.star;
+                    color = Colors.red.shade600;
+                  } else if (daysLeft <= 7) {
+                    subtitle = 'متبقي ${daysLeft} أيام (قريباً جداً)';
+                    icon = Icons.celebration;
+                    color = Colors.orange.shade600;
+                  } else {
+                    subtitle = 'متبقي ${daysLeft} أيام';
+                    icon = Icons.cake;
+                    color = Colors.green.shade600;
+                  }
+
+                  // 💡 تصميم بطاقة عيد ميلاد مبهرة (بدون تغيير)
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: color.withOpacity(0.5), width: 2),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      leading: Icon(icon, color: color, size: 35),
+                      title: Text(
+                        student.name,
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textPrimary),
+                      ),
+                      subtitle: Text(
+                        subtitle,
+                        style: TextStyle(fontStyle: FontStyle.italic, color: color, fontWeight: FontWeight.w600),
+                      ),
+                      trailing: Chip(
+                        label: Text(
+                          '${student.dob!.day}/${student.dob!.month}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                        ),
+                        backgroundColor: color,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

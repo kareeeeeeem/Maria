@@ -1,7 +1,6 @@
 // مسار الإنشاء: lib/constants.dart
 
 import 'package:flutter/material.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 // الألوان الكنسية المقترحة
 class AppColors {
