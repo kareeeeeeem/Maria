@@ -1,7 +1,7 @@
 // lib/screens/news/news_page.dart (أو news_page.dart إذا لم تستخدم مجلدات)
 
-import 'package:churchapp/sub/models/church_post.dart';
-import 'package:churchapp/sub/services/supabase_service.dart';
+import 'package:churchapp/models/church_post.dart';
+import 'package:churchapp/services/supabase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

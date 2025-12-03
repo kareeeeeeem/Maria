@@ -1,6 +1,7 @@
 
 import 'package:churchapp/aus/login/login_screen.dart';
 import 'package:churchapp/aus/signup/signup_screen.dart';
+import 'package:churchapp/screens/FeastsPage.dart';
 import 'package:churchapp/screens/bible/bible_page.dart';
 import 'package:churchapp/screens/ChurchStore.dart';
 import 'package:churchapp/screens/libraryPage.dart';
@@ -66,6 +67,7 @@ final Map<String, WidgetBuilder> routes = {
         '/VisitationScreen': (context) => const VisitationScreen(),
         '/SundaySchoolHome': (context) => const SundaySchoolHome(),
         '/AdminRequestsPage': (context) => const AdminRequestsPage(),
+        '/feasts': (context) => const FeastsPage(),
 
 
         // '/DonationPage': (context) => const DonationPage(),

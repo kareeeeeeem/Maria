@@ -39,6 +39,7 @@ class _AppDrawerState extends State<AppDrawer> {
     {'title': ' المكتبه', 'icon': Icons.library_add, 'route': '/InventoryPage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الافتقاد', 'icon': Icons.handshake, 'route': '/service', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' مطور التطبيق', 'icon': Icons.developer_board, 'route': '/HowUsViewPage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
+    {'title': ' أجندة الأعياد', 'icon': Icons.calendar_view_month, 'route': '/feasts', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
     {'title': ' مدارس الاحد', 'icon': Icons.school_outlined, 'route': '/SundaySchoolHome', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': true, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
     
     // 🔔 عنصر إرسال الاشعارات: يتطلب إما المدير العام أو مرسل الإشعارات (تم التعديل هنا)
@@ -50,6 +51,7 @@ class _AppDrawerState extends State<AppDrawer> {
    
    // ⛪ عنصر سجل الكنيسة: يتطلب المدير العام فقط
    {'title': ' سجل الكنيسه', 'icon': Icons.people_alt, 'route': '/VisitationScreen', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+   {'title': ' اجنده الاعياد', 'icon': Icons.people_alt, 'route': '/feasts', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
 
   
   ];
