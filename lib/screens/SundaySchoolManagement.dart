@@ -117,6 +117,8 @@ class AttendanceRecord {
   bool isClassPresent; 
   bool isLiturgyPresent; 
   bool isFather; 
+  bool isTrip; // تسجيل حضور الاجتماع
+
   
   Map<String, bool> events; 
 
@@ -126,7 +128,9 @@ class AttendanceRecord {
     required this.date,
     this.isClassPresent = false,
     this.isLiturgyPresent = false,
-        this.isFather = false,
+    this.isFather = false,
+        this.isTrip = false,
+
 
 
     
@@ -142,6 +146,7 @@ class AttendanceRecord {
       isClassPresent: data['isClassPresent'] ?? false,
       isLiturgyPresent: data['isLiturgyPresent'] ?? false,
             isFather: data['isFather'] ?? false,
+            isTrip: data['isTrip'] ?? false,
 
 
       
@@ -155,6 +160,7 @@ class AttendanceRecord {
         'isClassPresent': isClassPresent,
         'isLiturgyPresent': isLiturgyPresent,
         'isFather': isFather,
+        'isTrip': isTrip,
 
 
         'events': events,
@@ -714,7 +720,7 @@ class ClassesScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(icon: const Icon(Icons.edit, color: AppColors.primaryBlue),onPressed: () => _showClassDialog(context, classItem: classItem),),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.red),onPressed: () => _confirmDelete(context, classItem),),
+                     ///////// IconButton(icon: const Icon(Icons.delete, color: Colors.red),onPressed: () => _confirmDelete(context, classItem),),
                     ],
                   ),
                   onTap: () {
@@ -950,10 +956,10 @@ class StudentsScreen extends StatelessWidget {
                         icon: const Icon(Icons.info, color: Colors.blueGrey),
                         onPressed: () => _showStudentDialog(context, student: student),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmDelete(context, student),
-                      ),
+            ///////////////////////// IconButton(
+                      //   icon: const Icon(Icons.delete, color: Colors.red),
+                      //   onPressed: () => _confirmDelete(context, student),
+                      // ),
                     ],
                   ),
                   onTap: () => _showStudentDialog(context, student: student),
@@ -971,7 +977,7 @@ class StudentsScreen extends StatelessWidget {
 // 3. شاشة الحضور + التقرير الشهري
 // ==============================================================================
 
-enum AttendanceType { classPresent, liturgyPresent, father }
+enum AttendanceType { classPresent, liturgyPresent, father,isTrip}
 
 
 class AttendanceScreen extends StatefulWidget {
@@ -1051,6 +1057,9 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         break;
       case AttendanceType.father:
         record.isFather = value;
+        break;
+        case AttendanceType.isTrip:
+        record.isTrip = value;
         break;
     }
 
@@ -1279,10 +1288,16 @@ class AttendanceItem extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             _buildToggleButton(
+              label: 'الرحله',
+              type: AttendanceType.isTrip,
+              isPresent: record.isTrip,
+              activeColor: const Color.fromARGB(255, 222, 209, 28),
+            ),
+            _buildToggleButton(
               label: 'الاعتراف',
               type: AttendanceType.father,
               isPresent: record.isFather,
-              activeColor: const Color.fromARGB(255, 222, 209, 28),
+              activeColor: const Color.fromARGB(255, 28, 222, 96),
             ),
             _buildToggleButton(
               label: 'الفصل',
@@ -1405,6 +1420,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                     int classAbsent = records.where((r) => !r.isClassPresent).length;
                     int liturgyAbsent = records.where((r) => !r.isLiturgyPresent).length;
                     int fatherAbsent = records.where((r) => !r.isFather).length;
+
                      // تم حذف دالة print هنا لتجنب ظهورها في الكونسول
                     
                     // إظهار فقط إذا غاب 3 مرات أو أكثر في أي نوع
@@ -1457,8 +1473,6 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 // ==============================================================================
 // الشاشة 4: أعياد الميلاد
 // ==============================================================================
-// ==============================================================================
-// الشاشة 4: أعياد الميلاد (تعديل: إضافة فلترة الفصول)
 // ==============================================================================
 
 class BirthdaysScreen extends StatefulWidget {

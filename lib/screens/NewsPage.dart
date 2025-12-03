@@ -1,15 +1,20 @@
+// lib/screens/news/news_page.dart (أو news_page.dart إذا لم تستخدم مجلدات)
+
+import 'package:churchapp/sub/models/church_post.dart';
+import 'package:churchapp/sub/services/supabase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/date_symbol_data_local.dart'; 
 import 'package:intl/intl.dart'; 
 import 'dart:async'; 
+import 'dart:io';
+import 'package:image_picker/image_picker.dart'; // 🆕 لـ AddEditPostScreen
+
 
 // =========================================================
-// I. نموذج البيانات والثوابت
+// I. نموذج البيانات والثوابت (AppColors فقط)
 // =========================================================
-
-// 1. تعريف AppColors
 class AppColors {
   static const Color primaryBlue = Color(0xFF4E342E); // بني داكن
   static const Color secondaryGold = Color(0xFFFFF8E1); // ذهبي فاتح
@@ -20,48 +25,14 @@ class AppColors {
   static const Color alertRed = Color(0xFFE53935); 
 }
 
-// 2. نموذج بيانات الأخبار
-class ChurchPost {
-  final String id;
-  final String title;
-  final String body;
-  final DateTime date;
-  final bool isUrgent; 
+// ⚠️ تمت إزالة تعريف ChurchPost من هنا واستبداله بالاستيراد أعلاه
 
-  const ChurchPost({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.date,
-    this.isUrgent = false,
-  });
-
-  // مصنع لإنشاء كائن ChurchPost من DocumentSnapshot
-  factory ChurchPost.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>?;
-    return ChurchPost(
-      id: doc.id,
-      title: data?['title'] ?? 'عنوان مفقود',
-      body: data?['body'] ?? 'محتوى مفقود',
-      date: (data?['date'] as Timestamp? ?? Timestamp.now()).toDate(), 
-      isUrgent: data?['isUrgent'] ?? false,
-    );
-  }
-
-  // دالة لتحويل الكائن إلى Map لتخزينه في Firestore
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      'body': body,
-      'date': Timestamp.fromDate(date),
-      'isUrgent': isUrgent,
-    };
-  }
-}
 
 // =========================================================
 // II. الصفحة الرئيسية (NewsPage)
 // =========================================================
+// ... (NewsPage و _NewsPageState تبقى كما هي)
+// ... (setupAuthListener و deletePost تبقى كما هي)
 
 class NewsPage extends StatefulWidget {
   const NewsPage({super.key});
@@ -74,79 +45,66 @@ class _NewsPageState extends State<NewsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  // 🔴 الحالة الجديدة: تحديد ما إذا كان المستخدم مصادق عليه (مشرف)
   bool _isAdmin = false; 
-  // 🔴 حالة التحميل: لتأجيل عرض المحتوى حتى يتم التحقق من الدور
   bool _isLoading = true; 
   bool _isLocaleInitialized = false; 
 
-  // استخدام المتغير العالمي __app_id 
   final String appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
 
-  // تحديد مسار المجموعة (Collection Path)
   late final CollectionReference _newsCollection;
 
   @override
   void initState() {
     super.initState();
     
-    // تهيئة مسار مجموعة الأخبار العامة
     _newsCollection = _firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('news');
     
-    // 1. بدء تهيئة اللغة العربية
     _initializeLocale();
-
-    // 2. الاستماع لحالة المصادقة والتحقق من الدور
     _setupAuthListener();
   }
   
-  // 🔴 دالة التحقق من صلاحية المسؤول من Firestore
-  // يتم جلب الدور من مسار: users/{uid}
-Future<void> _checkAdminStatus(String uid) async {
- try {
- final doc = await _firestore.collection('users').doc(uid).get();
- final data = doc.data();
+  Future<void> _checkAdminStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      final data = doc.data();
 
- // 1. قراءة كلا الحقلين
- final bool isAdmin = data?['isAdmin'] ?? false;
- final bool isNewer = data?['IsNewer'] ?? false; // 👈 إضافة هذا السطر
+      final bool isAdmin = data?['isAdmin'] ?? false;
+      final bool isNewer = data?['IsNewer'] ?? false; 
+      final bool canEdit = isAdmin || isNewer; 
 
- // 2. دمج الصلاحيتين: يمكن التعديل إذا كان مديراً أو ناشراً
- final bool canEdit = isAdmin || isNewer; // 👈 التغيير الجوهري هنا
-
- if (mounted) {
- setState(() {
- _isAdmin = canEdit; // تعيين النتيجة المدمجة للمتغير _isAdmin
- _isLoading = false;
- });
- }
-} catch (e) {
+      if (mounted) {
+        setState(() {
+          _isAdmin = canEdit; 
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
       debugPrint('Admin Status Check Error: $e');
       if (mounted) {
         setState(() {
           _isAdmin = false;
-          _isLoading = false; // إنهاء التحميل حتى في حالة الخطأ
+          _isLoading = false;
         });
       }
     }
   }
 
-  // 🔴 دالة إعداد مستمع المصادقة
   void _setupAuthListener() {
-    _auth.authStateChanges().listen((User? user) {
+    _auth.authStateChanges().listen((User? user) async {
       if (!mounted) return;
 
       if (user != null) {
-        // 1. إذا كان المستخدم مصادقاً عليه، تحقق من الدور
         _checkAdminStatus(user.uid);
+        
+        // ❌ تم حذف جميع محاولات ربط Supabase Auth هنا.
+        // نعتمد الآن على سياسة Storage الجديدة (anon: true) 
+
       } else {
-        // 2. إذا لم يكن مصادقاً عليه (مستخدم ضيف أو غير مسجل)
         setState(() {
           _isAdmin = false;
           _isLoading = false; 
         });
         
-        // 3. محاولة تسجيل الدخول كضيف للسماح بقراءة الأخبار العامة
         if (_auth.currentUser == null) {
             _auth.signInAnonymously().catchError((e) {
                 debugPrint('Anonymous Auth Failed: $e');
@@ -156,7 +114,6 @@ Future<void> _checkAdminStatus(String uid) async {
     });
   }
 
-  // دالة لتهيئة بيانات اللغة العربية (لتجنب LocaleDataException)
   Future<void> _initializeLocale() async {
     try {
       await initializeDateFormatting('ar', null);
@@ -171,9 +128,8 @@ Future<void> _checkAdminStatus(String uid) async {
     }
   }
 
-  // دالة حذف منشور
   Future<void> deletePost(BuildContext context, String postId) async {
-    if (!_isAdmin) { // 🔴 تحقق إضافي
+    if (!_isAdmin) { 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('يجب أن تكون مشرفاً للقيام بهذه العملية.')),
         );
@@ -181,7 +137,8 @@ Future<void> _checkAdminStatus(String uid) async {
     }
     
     try {
-      await _newsCollection.doc(postId).delete();
+      // ⚠️ ملاحظة: يجب إضافة منطق حذف الملفات من Supabase Storage هنا لاحقاً!
+      await _newsCollection.doc(postId).delete(); 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ تم حذف الخبر بنجاح', textAlign: TextAlign.right)),
@@ -197,9 +154,8 @@ Future<void> _checkAdminStatus(String uid) async {
     }
   }
 
-  // دالة فتح شاشة الإضافة/التعديل
   void _navigateToAddEditPost({ChurchPost? post}) {
-    if (!_isAdmin) { // 🔴 التحقق من حالة المشرف
+    if (!_isAdmin) { 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يجب أن تكون مشرفاً للقيام بهذه العملية.')),
       );
@@ -218,7 +174,6 @@ Future<void> _checkAdminStatus(String uid) async {
 
   @override
   Widget build(BuildContext context) {
-    // 🔴 إظهار شاشة التحميل إذا لم تنتهِ تهيئة اللغة أو التحقق من الدور
     if (!_isLocaleInitialized || _isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.backgroundColor,
@@ -232,13 +187,10 @@ Future<void> _checkAdminStatus(String uid) async {
         title: const Text('📰 أخبار الكنيسة'  , style: TextStyle(color: AppColors.secondaryGold)),
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
-                 centerTitle: true,
-
+        centerTitle: true,
       ),
       
-      // جسم الصفحة: جلب البيانات من Firestore
       body: StreamBuilder<QuerySnapshot>(
-        // جلب البيانات وفرزها حسب التاريخ الأحدث أولاً
         stream: _newsCollection.orderBy('date', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -246,7 +198,6 @@ Future<void> _checkAdminStatus(String uid) async {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // لا حاجة لإظهار شريط تحميل هنا إذا كان _isLoading يُدير التحميل الأولي
             return const SizedBox.shrink(); 
           }
 
@@ -260,7 +211,6 @@ Future<void> _checkAdminStatus(String uid) async {
             );
           }
 
-          // تحويل البيانات إلى قائمة ChurchPost
           final List<ChurchPost> posts = snapshot.data!.docs
               .map((doc) => ChurchPost.fromFirestore(doc))
               .toList();
@@ -271,7 +221,7 @@ Future<void> _checkAdminStatus(String uid) async {
             itemBuilder: (context, index) {
               return _PostCard(
                 post: posts[index],
-                isAdmin: _isAdmin, // 🔴 تمرير حالة المشرف للبطاقة
+                isAdmin: _isAdmin, 
                 onDelete: () => deletePost(context, posts[index].id),
                 onEdit: () => _navigateToAddEditPost(post: posts[index]),
               );
@@ -280,8 +230,7 @@ Future<void> _checkAdminStatus(String uid) async {
         },
       ),
 
-      // زر الإضافة العائم يظهر فقط للمشرفين
-      floatingActionButton: _isAdmin // 🔴 التحكم بالظهور
+      floatingActionButton: _isAdmin 
           ? FloatingActionButton.extended(
               onPressed: () => _navigateToAddEditPost(),
               icon: const Icon(Icons.add),
@@ -318,12 +267,10 @@ class _PostCard extends StatelessWidget {
     super.key,
   });
 
-  // دالة تحويل الوقت إلى نص مناسب
   String _formatDate(DateTime date) {
     return DateFormat('yyyy/MM/dd | hh:mm a', 'ar').format(date);
   }
 
-  // عرض مربع حوار التأكيد
   void _showDeleteConfirmation(BuildContext context) {
     showDialog(
       context: context,
@@ -360,7 +307,6 @@ class _PostCard extends StatelessWidget {
       
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        // حدود حمراء للأخبار العاجلة
         side: post.isUrgent 
           ? const BorderSide(color: AppColors.alertRed, width: 2.5) 
           : BorderSide.none,
@@ -374,7 +320,6 @@ class _PostCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // التاريخ
                 Text(
                   _formatDate(post.date),
                   style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -396,7 +341,7 @@ class _PostCard extends StatelessWidget {
                       ),
                     ),
                   ),
-              ].reversed.toList(), // لعرض العناصر بالترتيب الصحيح (يمين -> يسار)
+              ].reversed.toList(),
             ),
 
             const SizedBox(height: 8),
@@ -421,9 +366,60 @@ class _PostCard extends StatelessWidget {
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
             ),
+            
+            // 🆕 عرض الوسائط المرفقة
+            if (post.mediaUrls.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 15.0),
+                child: SizedBox(
+                  height: 150, 
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: post.mediaUrls.length,
+                    reverse: true, // لعرض العناصر من اليمين إلى اليسار
+                    itemBuilder: (context, index) {
+                      final url = post.mediaUrls[index];
+                      // افتراض بسيط لتحديد نوع الوسائط
+                      final isImage = url.toLowerCase().contains('.jpg') || 
+                                      url.toLowerCase().contains('.png') || 
+                                      url.toLowerCase().contains('.jpeg');
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: isImage
+                              ? Image.network(
+                                  url,
+                                  width: 150,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+                                  },
+                                  errorBuilder: (context, error, stackTrace) => 
+                                    const Icon(Icons.error_outline, size: 50, color: AppColors.alertRed),
+                                )
+                              : Container(
+                                  width: 150,
+                                  color: Colors.black54,
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.video_camera_back, color: Colors.white, size: 40),
+                                      Text('فيديو', style: TextStyle(color: Colors.white)),
+                                    ],
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
 
             // أزرار المشرف (تعديل وحذف)
-            if (isAdmin) // 🔴 التحكم بالظهور
+            if (isAdmin) 
               Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: Row(
@@ -469,6 +465,14 @@ class AddEditPostScreen extends StatefulWidget {
 }
 
 class _AddEditPostScreenState extends State<AddEditPostScreen> {
+  // 🆕 متغيرات ومكونات الوسائط
+  final SupabaseService _supabaseService = SupabaseService(); 
+  final ImagePicker _picker = ImagePicker(); 
+  List<XFile> _selectedFiles = []; // الملفات المختارة حديثاً
+  List<String> _currentMediaUrls = []; // الروابط القديمة (للتعديل)
+  int _uploadingCount = 0; 
+  double _uploadProgress = 0.0; 
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
@@ -478,11 +482,12 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
   @override
   void initState() {
     super.initState();
-    // لملء الحقول عند التعديل
+    // لملء الحقول والروابط عند التعديل
     if (widget.post != null) {
       _titleController.text = widget.post!.title;
       _bodyController.text = widget.post!.body;
       _isUrgent = widget.post!.isUrgent;
+      _currentMediaUrls = List.from(widget.post!.mediaUrls); // نسخ الروابط الموجودة
     }
   }
 
@@ -492,14 +497,84 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     _bodyController.dispose();
     super.dispose();
   }
+  
+  // 🆕 دالة اختيار الصور والفيديوهات
+  Future<void> _pickMedia() async {
+    final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
-  // دالة الإرسال (إضافة/تعديل)
+    // 🔴 ملاحظة: يمكنك استخدام دالة _picker.pickVideo() لإضافة خيار الفيديو إذا أردت
+    // يمكنك أيضاً استخدام مكتبات متقدمة مثل file_picker لدمج الاختيار.
+
+    if (pickedFiles.isNotEmpty) {
+      setState(() {
+        _selectedFiles = [..._selectedFiles, ...pickedFiles];
+      });
+    }
+  }
+  
+  // 🆕 دالة إزالة الملف المحلي (الذي لم يتم رفعه بعد)
+  void _removeFile(XFile file) {
+    setState(() {
+      _selectedFiles.remove(file);
+    });
+  }
+  
+  // 🆕 دالة إزالة الرابط القديم (من Firestore)
+  void _removeUrl(String url) {
+    setState(() {
+      _currentMediaUrls.remove(url);
+    });
+    // ⚠️ ملاحظة: لتبسيط الكود، لم يتم إضافة منطق حذف الملف من Supabase هنا.
+    // يجب إضافة _supabaseService.deleteFile(url) هنا للحذف الفعلي.
+  }
+  
+  // 🆕 دالة رفع الملفات إلى Supabase Storage
+  Future<List<String>> _handleFileUploads() async {
+    if (_selectedFiles.isEmpty) {
+        // لا يوجد ملفات جديدة للرفع، نرجع فقط الروابط القديمة المتبقية بعد الحذف
+        return _currentMediaUrls;
+    }
+
+    setState(() {
+      _uploadingCount = _selectedFiles.length;
+      _uploadProgress = 0.0;
+    });
+    
+    try {
+        // استخدام دالة الخدمة الموحدة لرفع الملفات
+        final newUrls = await _supabaseService.uploadFiles(
+            _selectedFiles, 
+            (progress) { // تحديث التقدم عبر الـ Callback
+                if (mounted) {
+                    setState(() {
+                        _uploadProgress = progress;
+                    });
+                }
+            }
+        );
+        
+        // دمج الروابط الجديدة مع الروابط القديمة التي لم يتم حذفها
+        return [..._currentMediaUrls, ...newUrls]; 
+
+    } catch (e) {
+        rethrow;
+    } finally {
+        if (mounted) {
+            setState(() {
+                _uploadingCount = 0;
+                _uploadProgress = 0.0;
+            });
+        }
+    }
+  }
+
+
+  // دالة الإرسال (إضافة/تعديل) - تم تحديثها لدمج رفع الملفات
   Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // 🔴 التحقق من المصادقة (إجراء أمان إضافي)
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null || currentUser.isAnonymous) {
         if (mounted) {
@@ -513,16 +588,19 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     setState(() { _isLoading = true; });
 
     try {
+      // 1. رفع الملفات والحصول على قائمة عناوين URL المدمجة
+      final List<String> finalMediaUrls = await _handleFileUploads(); 
+      
       final newPost = ChurchPost(
         id: widget.post?.id ?? '', 
         title: _titleController.text,
         body: _bodyController.text,
-        date: DateTime.now(), // تحديث التاريخ عند الإرسال/التعديل
+        date: DateTime.now(), 
         isUrgent: _isUrgent,
+        mediaUrls: finalMediaUrls, // 🆕 تمرير قائمة الـ URLs النهائية
       );
 
       if (widget.post == null) {
-        // إضافة منشور جديد
         await widget.newsCollection.add(newPost.toMap());
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -530,7 +608,7 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
           );
         }
       } else {
-        // تعديل منشور موجود
+        // تعديل منشور موجود (نحن نحدث المنشور نفسه ولكن نستخدم الروابط الجديدة)
         await widget.newsCollection.doc(widget.post!.id).update(newPost.toMap());
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -542,8 +620,11 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-    } catch (e) {
-      debugPrint('Submission Error: $e');
+   } catch (e, stacktrace) { // 🆕 هنا تم إضافة 'stacktrace'
+      // 🆕 اطبع الخطأ كاملاً بالإضافة إلى الـ Stack Trace لمزيد من التفاصيل
+      debugPrint('🚨🚨🚨 Submission Error DETAILS: $e'); 
+      debugPrint('🚨🚨🚨 Stack Trace: $stacktrace'); // 🆕 طباعة تتبع الخطأ كاملاً
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ فشل الإرسال: $e', textAlign: TextAlign.right)),
@@ -555,7 +636,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       }
     }
   }
-
   // مكون مساعد لحقل الإدخال
   Widget _buildTextFormField({
     required TextEditingController controller,
@@ -584,6 +664,65 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       },
     );
   }
+  
+  // ---------------------------------------------------------
+  // مكون عرض الملفات المحلية المختارة (_MediaPreviewList)
+  // ---------------------------------------------------------
+  Widget _MediaPreviewList() {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: _selectedFiles.map((file) {
+        return Chip(
+          backgroundColor: AppColors.secondaryGold,
+          // 🆕 عرض اسم الملف فقط
+          label: Text(file.name.length > 20 ? '${file.name.substring(0, 17)}...' : file.name), 
+          deleteIcon: const Icon(Icons.close, size: 18),
+          onDeleted: () => _removeFile(file),
+        );
+      }).toList(),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // مكون عرض الروابط الموجودة مسبقاً (_ExistingMediaUrls)
+  // ---------------------------------------------------------
+  Widget _ExistingMediaUrls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'الوسائط المرفوعة سابقاً (اضغط للحذف):',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          textAlign: TextAlign.right,
+        ),
+        const SizedBox(height: 5),
+        ..._currentMediaUrls.map((url) {
+          final isImage = url.toLowerCase().contains('.jpg') || url.toLowerCase().contains('.png');
+          final icon = isImage ? Icons.image : Icons.videocam;
+          // 🆕 استخراج اسم الملف من الـ URL للعرض
+          final fileName = Uri.parse(url).pathSegments.last; 
+
+          return ListTile(
+            title: Text(
+              fileName,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            trailing: Icon(icon, color: AppColors.primaryBlue),
+            leading: IconButton(
+              icon: const Icon(Icons.delete_forever, color: AppColors.alertRed),
+              onPressed: () => _removeUrl(url),
+            ),
+            contentPadding: EdgeInsets.zero,
+          );
+        }).toList(),
+      ],
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -632,7 +771,53 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
                 activeColor: AppColors.alertRed,
                 contentPadding: EdgeInsets.zero,
               ),
+              
+              const SizedBox(height: 20),
 
+              // 🆕 زر اختيار الصور والفيديوهات
+              OutlinedButton.icon(
+                onPressed: _pickMedia,
+                icon: const Icon(Icons.photo_library),
+                label: const Text('اختيار صور/فيديوهات'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              
+              const SizedBox(height: 15),
+
+              // 🆕 عرض الملفات المختارة حالياً (المحلية)
+              if (_selectedFiles.isNotEmpty)
+                _MediaPreviewList(),
+              
+              // 🆕 عرض الروابط الموجودة مسبقاً (للتعديل)
+              if (_currentMediaUrls.isNotEmpty && _selectedFiles.isEmpty)
+                _ExistingMediaUrls(),
+
+              // 🆕 عرض شريط التقدم عند الرفع
+              if (_uploadingCount > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      LinearProgressIndicator(
+                        value: _uploadProgress,
+                        backgroundColor: AppColors.secondaryGold,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'جاري رفع الملفات (${(_uploadProgress * 100).toStringAsFixed(0)}%)',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              
               const SizedBox(height: 30),
 
               // زر الإرسال

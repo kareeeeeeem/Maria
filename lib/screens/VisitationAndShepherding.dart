@@ -99,10 +99,11 @@ class _VisitationScreenState extends State<VisitationScreen> {
     return Scaffold(
       backgroundColor:Color(0xFF4E342E),
       appBar: AppBar(
-        title: const Center(child: Text(' بيانات الشعب ', style: TextStyle(color: AppColors.accentColor))),
+        title:  const Text(' بيانات الشعب ', style: TextStyle(color: AppColors.accentColor)),
       backgroundColor:Color(0xFF4E342E),
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.accentColor),
+        centerTitle: true,
       ),
       body: Column(
         children: [
@@ -218,8 +219,7 @@ class _VisitationScreenState extends State<VisitationScreen> {
               labelText: 'مرشح الافتقاد',
               labelStyle: const TextStyle(color: AppColors.accentColor),
               filled: true,
-              fillColor:      Color(0xFF4E342E)
-.withOpacity(0.9),
+              fillColor:      Color(0xFF4E342E).withOpacity(0.9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,

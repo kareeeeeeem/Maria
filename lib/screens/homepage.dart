@@ -1,3 +1,4 @@
+import 'package:churchapp/screens/NewsPage.dart';
 import 'package:churchapp/screens/notification/notification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -198,7 +199,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+// 🛑 التعديل الأول: إضافة with SingleTickerProviderStateMixin
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin { 
   // قائمة بأزرار الوصول السريع
   final List<Map<String, dynamic>> quickActions = const [
         {'title': 'الإنجيل', 'icon': Icons.menu_book, 'route': '/bible'},
@@ -208,9 +210,6 @@ class _HomePageState extends State<HomePage> {
     {'title': 'الاجتماعات', 'icon': Icons.groups_2, 'route': '/meetings'},
     {'title': 'الأنشطة والرحلات', 'icon': Icons.event, 'route': '/events'},
         {'title': 'الافتقاد', 'icon': Icons.event, 'route': '/service'},
-
-
-
   ];
 
   // متغيرات الحالة
@@ -225,6 +224,11 @@ class _HomePageState extends State<HomePage> {
   // متغير التحكم في شريط الأخبار العاجلة والتمرير التلقائي
   final PageController _pageController = PageController();
   Timer? _tickerTimer;
+  
+  // ✅ متحكم الحركة المستمرة (النبض)
+  late AnimationController _pulseController;
+  // ✅ منحنى الحركة لتأثير النبض
+  late Animation<double> _pulseAnimation;
   
   // استخدام المتغير العالمي __app_id 
   final String _appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
@@ -242,12 +246,27 @@ class _HomePageState extends State<HomePage> {
     _fetchNewsData(); 
     // بدء التمرير التلقائي للأخبار العاجلة بعد جلب البيانات
     _startNewsTickerTimer(); 
+    
+    // 🚀 تهيئة متحكم الحركة المستمرة (النبض/الدوران)
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000), // مدة الحركة (ثانية واحدة)
+    );
+
+    // 🚀 تعريف الحركة (تأثير النبض البسيط من حجم 1.0 إلى 1.15)
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
+    );
+
+    // 🚀 تشغيل الحركة في حلقة مستمرة (ذهاب وإياب)
+    _pulseController.repeat(reverse: true); 
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _tickerTimer?.cancel(); // 👈 إلغاء المؤقت عند التخلص من الصفحة
+    _tickerTimer?.cancel(); // إلغاء المؤقت عند التخلص من الصفحة
+    _pulseController.dispose(); // 🛑 التعديل الثالث: التخلص من المتحكم
     super.dispose();
   }
 
@@ -396,6 +415,27 @@ class _HomePageState extends State<HomePage> {
           appBar: AppBar(
             backgroundColor: AppColors.primaryBlue,
             elevation: 0,
+            automaticallyImplyLeading: false,
+            // 🛑 تطبيق الأيقونة المتحركة (النبض)
+            leading: Builder(
+              builder: (context) {
+                return IconButton(
+                  onPressed: () {
+                    // فتح الدرج الجانبي يدوياً
+                    Scaffold.of(context).openDrawer(); 
+                  },
+                  // 🚀 استخدام ScaleTransition لتطبيق تأثير النبض/الحجم
+                  icon: ScaleTransition(
+                    scale: _pulseAnimation, // استخدام متحكم النبض
+                    child: const Icon(
+                      Icons.dashboard_rounded, 
+                      color: AppColors.secondaryGold,
+                      size: 28, // حجم أكبر لجعل النبض أوضح
+                    ),
+                  ),
+                );
+              },
+            ),
             actions: [
               // زر الإشعارات 
               IconButton(
@@ -438,7 +478,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 20),
                 
                 // هـ. أحدث أخبار الكنيسة (3 أخبار عادية)
-                 Text('أخبار الكنيسة',
+                 Text(' أخبار الكنيسة بأختصار',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 10),
@@ -451,7 +491,7 @@ class _HomePageState extends State<HomePage> {
                       Navigator.pushNamed(context, '/news'); 
                     },
                     icon: const Icon(Icons.arrow_back, size: 18),
-                    label: const Text('عرض كل الأخبار', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text('عرض كل الأخبار كامله', style: TextStyle(fontWeight: FontWeight.bold)),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primaryBlue,
                       alignment: Alignment.centerLeft,
@@ -680,8 +720,13 @@ class _HomePageState extends State<HomePage> {
               ),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
               onTap: () {
-                // TODO: الانتقال لصفحة تفاصيل الخبر 
-              },
+             Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => NewsPage(), 
+                    // تأكد أن NewsDetailsPage هو اسم الصفحة التي ستنشئها
+                  ),
+                );              },
             ),
           ),
         );

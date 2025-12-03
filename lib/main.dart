@@ -1,13 +1,21 @@
+// lib/main.dart
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb; 
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // 🆕 إضافة Supabase
 
 import 'package:churchapp/routes.dart'; 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:churchapp/firebase_options.dart'; 
 
+// =========================================================================
+// 🌐 ثوابت Supabase
+// =========================================================================
+const String SUPABASE_URL ='https://zmvhirhhbavjkdjbyrpl.supabase.co'; 
+const String SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdmhpcmhoYmF2amtkamJ5cnBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3MjA0NDcsImV4cCI6MjA4MDI5NjQ0N30.axhqAPmfyd-quxOaYemRZIib_Rs95Bf_GZWeMfW5mJQ';
 // =========================================================================
 // 🔥 ثوابت ومتغيرات OneSignal
 // =========================================================================
@@ -16,9 +24,10 @@ final notificationsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
 
 
 // =========================================================================
-// 🔔 دالة تهيئة OneSignal (تم تحديثها)
+// 🔔 دالة تهيئة OneSignal
 // =========================================================================
 Future<void> _initializeOneSignal() async {
+// ... (بقية منطق OneSignal يبقى كما هو)
   if (kIsWeb) {
     print("🔔 OneSignal initialization skipped on Web platform.");
     return;
@@ -32,7 +41,6 @@ Future<void> _initializeOneSignal() async {
   final prefs = await SharedPreferences.getInstance(); 
   final String? savedString = prefs.getString('saved_notifications');
 
-  // 1. تحميل الإشعارات المحفوظة من SharedPreferences (عند بداية التطبيق)
   if (savedString != null) {
     try {
       List<dynamic> loadedList = jsonDecode(savedString);
@@ -56,7 +64,6 @@ Future<void> _initializeOneSignal() async {
     }
   }
   
-  // 2. معالج استقبال الإشعار أثناء عمل التطبيق (Foreground) - الجزء المُعدَّل
   OneSignal.Notifications.addForegroundWillDisplayListener((event) async {
     
     final notif = event.notification;
@@ -64,24 +71,16 @@ Future<void> _initializeOneSignal() async {
       "title": notif.title ?? "No title",
       "body": notif.body ?? "No message",
       "time": DateTime.now().toIso8601String(),
-      "isRead": false, // الإشعار الجديد دائماً غير مقروء
+      "isRead": false,
     };
 
-    // 🔥 التعديل: نعتمد مباشرة على القيمة الحالية في الذاكرة (notificationsNotifier.value) 
-    // لضمان أننا نستخدم حالة القراءة/الحذف التي تمت للتو في NotificationsPage
     final currentNotifications = notificationsNotifier.value; 
-    
-    // إضافة الإشعار الجديد إلى بداية القائمة الحالية
     final updatedNotifications = [newNotif, ...currentNotifications];
-    
-    // تحديث الـ ValueNotifier في الذاكرة (سيحدث الـ UI)
     notificationsNotifier.value = updatedNotifications; 
 
-    // ✅ الآن نقوم بالحفظ باستخدام نسخة prefs حديثة
     final prefs = await SharedPreferences.getInstance(); 
     await prefs.setString('saved_notifications', jsonEncode(updatedNotifications));
     
-    // تحديث عداد الإشعارات غير المقروءة
     await prefs.setInt('unread_count', updatedNotifications.where((n) => n["isRead"] == false).length);
 
     event.notification.display();
@@ -105,6 +104,12 @@ Future<void> main() async {
   
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform, 
+  );
+  
+  // 🆕 تهيئة Supabase Storage (للتخزين)
+  await Supabase.initialize(
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
   );
   
   await _initializeOneSignal();
