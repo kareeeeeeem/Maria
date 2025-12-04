@@ -1,3 +1,5 @@
+// File: lib/screens/HomePage.dart
+
 import 'package:churchapp/screens/NewsPage.dart';
 import 'package:churchapp/screens/notification/notification_screen.dart';
 import 'package:flutter/material.dart';
@@ -6,24 +8,30 @@ import 'package:flutter/services.dart';
 import 'dart:math'; // لاستخدام Random لجلب الآية العشوائية
 import 'dart:async'; // لاستخدام Timer
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:intl/intl.dart' show DateFormat; 
+import 'package:intl/intl.dart' show DateFormat;
 // يجب عليك التأكد من وجود هذه الملفات في المسار الصحيح
-import 'DrawerApp.dart'; 
+import 'DrawerApp.dart';
 
 
 // ==================================================================
 // 🔴 الثوابت ونماذج البيانات (Constants and Models)
 // ==================================================================
 
-// 1. تعريف AppColors
+// 1. تعريف AppColors (مع إضافة ألوان الكريسماس)
 class AppColors {
   static const Color primaryBlue = Color(0xFF4E342E); // لون بني داكن/كحلي
   static const Color secondaryGold = Color(0xFFFFF8E1); // لون ذهبي فاتح/كريمي
-  static const Color backgroundColor = Color(0xFFF5F5F5); 
+  static const Color backgroundColor = Color(0xFFF5F5F5);
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
-  static const Color alertRed = Color.fromARGB(255, 1, 64, 127); // لون أحمر غامق/أزرق غامق للتنبيه
+  // تم تغيير هذا اللون ليتناسب مع الكود الجديد
+  static const Color alertRed = Color.fromARGB(255, 1, 64, 127);
+
+  // 🎄 ألوان الكريسماس المؤقتة 🎄
+  static const Color christmasGreen = Color(0xFF004D40);
+  static const Color christmasRed = Color.fromARGB(255, 1, 64, 127);
+  static const Color christmasSnow = Color(0xFFE0F7FA);
 }
 
 // 2. نموذج بيانات الأخبار
@@ -32,7 +40,7 @@ class ChurchPost {
   final String title;
   final String body;
   final DateTime date;
-  final bool isUrgent; 
+  final bool isUrgent;
 
   const ChurchPost({
     required this.id,
@@ -48,7 +56,7 @@ class ChurchPost {
       id: doc.id,
       title: data?['title'] ?? 'عنوان مفقود',
       body: data?['body'] ?? 'محتوى مفقود',
-      date: (data?['date'] as Timestamp? ?? Timestamp.now()).toDate(), 
+      date: (data?['date'] as Timestamp? ?? Timestamp.now()).toDate(),
       isUrgent: data?['isUrgent'] ?? false,
     );
   }
@@ -87,7 +95,7 @@ const List<String> localBibleVerses = [
   'الْفِرْحَةُ بِالرَّبِّ هِيَ قُوَّتُكُمْ. (نحميا 8:10)',
   'كُلُّ الْكِتَابِ هُوَ مُوحًى بِهِ مِنَ اللهِ، وَنَافِعٌ لِلتَّعْلِيمِ وَالتَّوْبِيخِ، لِلتَّقْوِيمِ وَالتَّأْدِيبِ الَّذِي فِي الْبِرِّ. (تيموثاوس الثانية 3:16)',
   'اَلنَّامُوسُ بِالْمُوسَى أُعْطِيَ، أَمَّا النِّعْمَةُ وَالْحَقُّ فَبِيَسُوعَ الْمَسِيحِ صَارَا. (يوحنا 1:17)',
-  'إِنْ سَلَكْنَا فِي النُّورِ كَمَا هُوَ فِي النُّورِ، فَلَنَا شَرِكَةٌ بَعْضِنَا مَعَ بَعْضٍ. (يوحنا الأولى 1:7)',
+  'إِنْ سَلَكْنَا فِي النُّورِ كَمَا هُوَ فِي النُّورِ، فَلَنَا شِرِكَةٌ بَعْضِنَا مَعَ بَعْضٍ. (يوحنا الأولى 1:7)',
   'أَنَا هُوَ الْقِيَامَةُ وَالْحَيَاةُ. (يوحنا 11:25)',
   'قُوَّةُ اللهِ فِي الضَّعْفِ تُكَمَّلُ. (كورنثوس الثانية 12:9)',
   'لَكِنْ فِي كُلِّ هَذِهِ نَحْنُ أَعْظَمُ مِنْ غَالِبِينَ بِالَّذِي أَحَبَّنَا. (رومية 8:37)',
@@ -182,8 +190,17 @@ const List<String> localBibleVerses = [
 
 Future<String> fetchDailyVerse() async {
   final int randomIndex = Random().nextInt(localBibleVerses.length);
-  await Future.delayed(const Duration(milliseconds: 500)); 
+  await Future.delayed(const Duration(milliseconds: 500));
   return localBibleVerses[randomIndex];
+}
+
+// ******************************************************************
+// 🔴 دالة التحقق من فترة الكريسماس
+// ******************************************************************
+
+bool isChristmasSeason(DateTime now) {
+  // فترة الكريسماس: تبدأ من 15 ديسمبر وتنتهي في 31 يناير
+  return (now.month == 12 && now.day >= 20) || (now.month == 1 && now.day <= 10);
 }
 
 
@@ -192,15 +209,14 @@ Future<String> fetchDailyVerse() async {
 // ==================================================================
 
 class HomePage extends StatefulWidget {
-  static const String routeName = "/HomePage"; 
+  static const String routeName = "/HomePage";
   const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-// 🛑 التعديل الأول: إضافة with SingleTickerProviderStateMixin
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin { 
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   // قائمة بأزرار الوصول السريع
   final List<Map<String, dynamic>> quickActions = const [
         {'title': 'الإنجيل', 'icon': Icons.menu_book, 'route': '/bible'},
@@ -214,66 +230,64 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   // متغيرات الحالة
   String _dailyVerse = 'جاري جلب الآية...';
-  List<ChurchPost> _urgentNewsList = []; 
-  List<ChurchPost> _latestNews = []; 
+  List<ChurchPost> _urgentNewsList = [];
+  List<ChurchPost> _latestNews = [];
   bool _isLoadingVerse = true;
   bool _isLoadingNews = true;
-  bool _hasFetchError = false; // 👈 متغير جديد لتتبع خطأ الجلب
-  DateTime? _lastPressed; // 👈 متغير لتتبع ضغطة زر الرجوع
+  bool _hasFetchError = false;
+  DateTime? _lastPressed;
 
   // متغير التحكم في شريط الأخبار العاجلة والتمرير التلقائي
   final PageController _pageController = PageController();
   Timer? _tickerTimer;
-  
-  // ✅ متحكم الحركة المستمرة (النبض)
+
+  // متحكم الحركة المستمرة (النبض)
   late AnimationController _pulseController;
-  // ✅ منحنى الحركة لتأثير النبض
+  // منحنى الحركة لتأثير النبض
   late Animation<double> _pulseAnimation;
-  
-  // استخدام المتغير العالمي __app_id 
+
+  // استخدام المتغير العالمي __app_id
   final String _appId = const String.fromEnvironment('__app_id', defaultValue: 'default-app-id');
   late final CollectionReference _newsCollection;
-  bool _isLocaleInitialized = false; 
-  
+  bool _isLocaleInitialized = false;
+
   @override
   void initState() {
     super.initState();
-    
+
     _initializeLocale();
     _newsCollection = FirebaseFirestore.instance.collection('artifacts').doc(_appId).collection('public').doc('data').collection('news');
-    
+
     _getDailyVerse();
-    _fetchNewsData(); 
-    // بدء التمرير التلقائي للأخبار العاجلة بعد جلب البيانات
-    _startNewsTickerTimer(); 
-    
-    // 🚀 تهيئة متحكم الحركة المستمرة (النبض/الدوران)
+    _fetchNewsData();
+    _startNewsTickerTimer();
+
+    // تهيئة متحكم الحركة المستمرة (النبض/الدوران)
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000), // مدة الحركة (ثانية واحدة)
+      duration: const Duration(milliseconds: 1000),
     );
 
-    // 🚀 تعريف الحركة (تأثير النبض البسيط من حجم 1.0 إلى 1.15)
+    // تعريف الحركة (تأثير النبض البسيط)
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
     );
 
-    // 🚀 تشغيل الحركة في حلقة مستمرة (ذهاب وإياب)
-    _pulseController.repeat(reverse: true); 
+    // تشغيل الحركة في حلقة مستمرة (ذهاب وإياب)
+    _pulseController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _tickerTimer?.cancel(); // إلغاء المؤقت عند التخلص من الصفحة
-    _pulseController.dispose(); // 🛑 التعديل الثالث: التخلص من المتحكم
+    _tickerTimer?.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
-  // دالة لتهيئة بيانات اللغة العربية 
+  // دالة لتهيئة بيانات اللغة العربية
   Future<void> _initializeLocale() async {
     try {
-      // يفضل نقل هذا الاستدعاء إلى دالة main()
       await initializeDateFormatting('ar', null);
     } catch (e) {
       debugPrint('Error initializing locale data: $e');
@@ -285,7 +299,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     }
   }
-  
+
   // دالة جلب آية اليوم
   Future<void> _getDailyVerse() async {
     final verse = await fetchDailyVerse();
@@ -297,7 +311,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
   }
 
-  // جلب الأخبار العاجلة والأخبار العادية من Firestore 
+  // جلب الأخبار العاجلة والأخبار العادية من Firestore
   Future<void> _fetchNewsData() async {
     if (mounted) {
       setState(() {
@@ -315,7 +329,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           .get();
 
       _urgentNewsList = urgentQuerySnapshot.docs.map((doc) => ChurchPost.fromFirestore(doc)).toList();
-      
+
       // 2.2 جلب أحدث 3 أخبار غير عاجلة
       final latestNewsQuerySnapshot = await _newsCollection
           .where('isUrgent', isEqualTo: false)
@@ -329,7 +343,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       debugPrint('❌❌ خطأ فادح في جلب بيانات الأخبار في HomePage: $e');
       if (mounted) {
         setState(() {
-          _hasFetchError = true; // الإشارة إلى وجود خطأ في الجلب
+          _hasFetchError = true;
         });
       }
     } finally {
@@ -348,7 +362,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       if (_urgentNewsList.isNotEmpty && _pageController.hasClients) {
         int nextPage = _pageController.page!.round() + 1;
         if (nextPage >= _urgentNewsList.length) {
-          nextPage = 0; 
+          nextPage = 0;
         }
         _pageController.animateToPage(
           nextPage,
@@ -358,45 +372,51 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     });
   }
-  
-  // 💡 الدالة المُعدلة لضمان الخروج القاطع
+
+  // الدالة المُعدلة لضمان الخروج القاطع
   Future<bool> _onWillPop() async {
     final now = DateTime.now();
     final lastPressed = _lastPressed;
-    
-    const exitDuration = Duration(seconds: 2); 
+
+    const exitDuration = Duration(seconds: 2);
 
     if (lastPressed == null || now.difference(lastPressed) > exitDuration) {
-      _lastPressed = now; 
-      
+      _lastPressed = now;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'اضغط مرة أخرى للخروج ', 
-            textAlign: TextAlign.center, 
+            'اضغط مرة أخرى للخروج ',
+            textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.secondaryGold, fontWeight: FontWeight.bold),
           ),
           duration: exitDuration,
-          backgroundColor: AppColors.primaryBlue, 
-          behavior: SnackBarBehavior.floating, 
-          
+          backgroundColor: AppColors.primaryBlue,
+          behavior: SnackBarBehavior.floating,
+
           margin: const EdgeInsets.only(bottom: 20, left: 60, right: 60),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), 
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         ),
       );
-      
-      return false; // منع الخروج
+
+      return false;
     }
-    
-    // 💥 عند الضغطة الثانية، نستخدم SystemNavigator.pop لطلب الخروج من النظام مباشرة
+
     SystemNavigator.pop();
-    // نرجع true للسماح لـ WillPopScope بالعمل، لكن النظام سينتهي فعلياً عبر pop()
-    return true; 
+    return true;
   }
 
 
   @override
   Widget build(BuildContext context) {
+    // 💡 التحقق من المظهر الموسمي
+    final bool isSeason = isChristmasSeason(DateTime.now());
+
+    // 🎨 تحديد الألوان بناءً على الموسم
+    final Color appPrimaryColor = isSeason ? AppColors.christmasGreen : AppColors.primaryBlue;
+    final Color appAccentColor = isSeason ? AppColors.christmasRed : AppColors.alertRed; // نستخدم alertRed كلون ثانوي للعروض
+    final Color appSecondaryColor = isSeason ? AppColors.christmasSnow : AppColors.secondaryGold; // لون الأيقونات والنصوص البارزة
+
     if (!_isLocaleInitialized) {
       return const Scaffold(
         backgroundColor: AppColors.backgroundColor,
@@ -404,138 +424,145 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       );
     }
 
-    return WillPopScope( 
+    return WillPopScope(
       onWillPop: _onWillPop,
-      child: Directionality( 
+      child: Directionality(
         textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: AppColors.backgroundColor,
-          
-          // 1. الـ AppBar (شريط التطبيق العلوي)
-          appBar: AppBar(
-            backgroundColor: AppColors.primaryBlue,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            // 🛑 تطبيق الأيقونة المتحركة (النبض)
-            leading: Builder(
-              builder: (context) {
-                return IconButton(
-                  onPressed: () {
-                    // فتح الدرج الجانبي يدوياً
-                    Scaffold.of(context).openDrawer(); 
+        child: Stack( // استخدام Stack لوضع الثلج والزينة فوق الـ Scaffold
+          children: [
+            Scaffold(
+              backgroundColor: AppColors.backgroundColor,
+
+              // 1. الـ AppBar (شريط التطبيق العلوي)
+              appBar: AppBar(
+                backgroundColor: appPrimaryColor, // 👈 اللون الموسمي
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                leading: Builder(
+                  builder: (context) {
+                    return IconButton(
+                      onPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                      icon: ScaleTransition(
+                        scale: _pulseAnimation,
+                        child: Icon(
+                          Icons.dashboard_rounded,
+                          color: appSecondaryColor, // 👈 اللون الموسمي
+                          size: 28,
+                        ),
+                      ),
+                    );
                   },
-                  // 🚀 استخدام ScaleTransition لتطبيق تأثير النبض/الحجم
-                  icon: ScaleTransition(
-                    scale: _pulseAnimation, // استخدام متحكم النبض
-                    child: const Icon(
-                      Icons.dashboard_rounded, 
-                      color: AppColors.secondaryGold,
-                      size: 28, // حجم أكبر لجعل النبض أوضح
-                    ),
-                  ),
-                );
-              },
-            ),
-            actions: [
-              // زر الإشعارات 
-              IconButton(
-                icon: const Icon(Icons.notifications, color: AppColors.secondaryGold),
-                onPressed: () {
-                   Navigator.pushNamed(context, NotificationsPage.routeName);
-                },
-              ),
-            ],
-          ),
-          // 2. الـ Drawer 
-          drawer: const AppDrawer(),
-          
-          // 3. جسم الصفحة (Body)
-          body: RefreshIndicator(
-            onRefresh: () async {
-              setState(() {
-                _isLoadingVerse = true;
-                _isLoadingNews = true;
-              });
-              await _getDailyVerse();
-              await _fetchNewsData(); 
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                // أ. بانر آية اليوم
-                _buildVerseOfTheDay(),
-                
-                const SizedBox(height: 20),
-                
-                // ب. شريط الأخبار العاجلة (News Ticker) 
-                _buildNewsTicker(),
-
-                const SizedBox(height: 20),
-                
-                // ج. أزرار الوصول السريع (Quick Access)
-                _buildQuickActionsGrid(context),
-
-                const SizedBox(height: 20),
-                
-                // هـ. أحدث أخبار الكنيسة (3 أخبار عادية)
-                 Text(' أخبار الكنيسة بأختصار',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 10),
-                _buildLatestNewsSection(context),
-
-                // زر عرض المزيد للأخبار
-                if (_latestNews.isNotEmpty || _urgentNewsList.isNotEmpty || _hasFetchError)
-                  TextButton.icon(
+                ),
+                actions: [
+                  // زر الإشعارات
+                  IconButton(
+                    icon: Icon(Icons.notifications, color: appSecondaryColor), // 👈 اللون الموسمي
                     onPressed: () {
-                      Navigator.pushNamed(context, '/news'); 
+                       Navigator.pushNamed(context, NotificationsPage.routeName);
                     },
-                    icon: const Icon(Icons.arrow_back, size: 18),
-                    label: const Text('عرض كل الأخبار كامله', style: TextStyle(fontWeight: FontWeight.bold)),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryBlue,
-                      alignment: Alignment.centerLeft,
-                    ),
                   ),
-              ],
+                ],
+              ),
+              // 2. الـ Drawer
+              drawer: const AppDrawer(),
+
+              // 3. جسم الصفحة (Body)
+              body: RefreshIndicator(
+                onRefresh: () async {
+                  setState(() {
+                    _isLoadingVerse = true;
+                    _isLoadingNews = true;
+                  });
+                  await _getDailyVerse();
+                  await _fetchNewsData();
+                },
+                child: ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    // أ. بانر آية اليوم
+                    _buildVerseOfTheDay(appPrimaryColor, appSecondaryColor, isSeason),
+
+                    const SizedBox(height: 20),
+
+                    // ب. شريط الأخبار العاجلة (News Ticker)
+                    _buildNewsTicker(appAccentColor, appSecondaryColor),
+
+                    const SizedBox(height: 20),
+
+                    // ج. أزرار الوصول السريع (Quick Access)
+                    _buildQuickActionsGrid(context, appPrimaryColor),
+
+                    const SizedBox(height: 20),
+
+                    // هـ. أحدث أخبار الكنيسة (3 أخبار عادية)
+                     Text(isSeason ? '🔔 أخبار الكنيسة بأختصار' : 'أخبار الكنيسة بأختصار',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 10),
+                    _buildLatestNewsSection(context, appPrimaryColor),
+
+                    // زر عرض المزيد للأخبار
+                    if (_latestNews.isNotEmpty || _urgentNewsList.isNotEmpty || _hasFetchError)
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/news');
+                        },
+                        icon: const Icon(Icons.arrow_back, size: 18),
+                        label: const Text('عرض كل الأخبار كامله', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: appPrimaryColor, // 👈 اللون الموسمي
+                          alignment: Alignment.centerLeft,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+            
+            // ❄️ إضافة الثلج (يظهر فوق الـ Scaffold)
+            if (isSeason) const IgnorePointer(child: _SnowfallWidget()),
+            
+            // 🎄 إضافة الزينة (تظهر فوق الـ Scaffold)
+            if (isSeason) const IgnorePointer(child: _ChristmasGarlandWidget()), 
+          ],
+        )
       ),
     );
   }
 
   // 1. آية اليوم (Widget)
-  Widget _buildVerseOfTheDay() {
+  Widget _buildVerseOfTheDay(Color primary, Color secondary, bool isSeason) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: AppColors.primaryBlue,
+        color: primary,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: AppColors.primaryBlue.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5)),
+          BoxShadow(color: primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            '💫 آية اليوم',
+          Text(
+            isSeason ? '🎄 آية اليوم المباركة' : '💫 آية اليوم',
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: AppColors.secondaryGold,
+              color: secondary,
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 10),
           _isLoadingVerse
-              ? const Center(child: CircularProgressIndicator(color: AppColors.secondaryGold, strokeWidth: 2))
+              ? Center(child: CircularProgressIndicator(color: secondary, strokeWidth: 2))
               : Text(
                   _dailyVerse,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.secondaryGold,
+                  style: TextStyle(
+                    color: secondary,
                     fontSize: 16,
                     height: 1.5,
                   ),
@@ -544,41 +571,41 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       ),
     );
   }
-  
+
   // 2. شريط الأخبار العاجلة (News Ticker)
-  Widget _buildNewsTicker() {
-    
+  Widget _buildNewsTicker(Color accent, Color secondary) {
+
     if (_isLoadingNews) {
       return Container(
         height: 60,
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppColors.alertRed.withOpacity(0.95),
+          color: accent.withOpacity(0.95),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const LinearProgressIndicator(color: AppColors.secondaryGold),
+        child: LinearProgressIndicator(color: secondary),
       );
     }
-    
-    if (_urgentNewsList.isEmpty) { 
-        return const SizedBox.shrink(); 
+
+    if (_urgentNewsList.isEmpty) {
+        return const SizedBox.shrink();
     }
 
     // بناء الشريط العاجل
     return Container(
-      height: 60, 
+      height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.alertRed.withOpacity(0.95),
+        color: accent.withOpacity(0.95),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.alertRed),
+        border: Border.all(color: accent),
       ),
       child: Row(
         children: [
-          const Icon(Icons.campaign, color: AppColors.secondaryGold, size: 22),
+          Icon(Icons.campaign, color: secondary, size: 22),
           const SizedBox(width: 8),
-          
+
           Expanded(
             child: PageView.builder(
               controller: _pageController,
@@ -589,28 +616,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   alignment: Alignment.centerRight,
                   child: Text(
                     'الاخبار العاجله: ${post.title}',
-                    style: const TextStyle(color: AppColors.secondaryGold, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: secondary, fontSize: 14, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
-                    maxLines: 2, 
+                    maxLines: 2,
                     textAlign: TextAlign.right,
                   ),
                 );
               },
             ),
           ),
-          
-          // زر للتمرير يظهر فقط إذا كان هناك أكثر من خبر واحد (يمكن الاعتماد على التمرير التلقائي الآن)
+
           if (_urgentNewsList.length > 1)
             Padding(
               padding: const EdgeInsets.only(right: 5.0),
               child: InkWell(
                 onTap: () {
                   _pageController.nextPage(
-                    duration: const Duration(milliseconds: 300), 
+                    duration: const Duration(milliseconds: 300),
                     curve: Curves.easeIn,
                   );
                 },
-                child: const Icon(Icons.arrow_forward_ios, color: AppColors.secondaryGold, size: 18),
+                child: Icon(Icons.arrow_forward_ios, color: secondary, size: 18),
               ),
             ),
         ],
@@ -618,14 +644,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  // 3. أزرار الوصول السريع 
-  Widget _buildQuickActionsGrid(BuildContext context) {
+  // 3. أزرار الوصول السريع
+  Widget _buildQuickActionsGrid(BuildContext context, Color primary) {
     return GridView.builder(
-      shrinkWrap: true, 
-      physics: const NeverScrollableScrollPhysics(), 
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, 
-        childAspectRatio: 1.8, 
+        crossAxisCount: 2,
+        childAspectRatio: 1.8,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -651,7 +677,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(action['icon'] as IconData, color: AppColors.primaryBlue, size: 30),
+                Icon(action['icon'] as IconData, color: primary, size: 30),
                 const SizedBox(height: 8),
                 Text(
                   action['title'] as String,
@@ -668,27 +694,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
     );
   }
-  
 
-  // 4. أحدث الأخبار العادية 
-  Widget _buildLatestNewsSection(BuildContext context) {
+
+  // 4. أحدث الأخبار العادية
+  Widget _buildLatestNewsSection(BuildContext context, Color primary) {
     if (_isLoadingNews) {
       return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
     }
-    
+
     // معالجة خطأ الجلب
     if (_hasFetchError) {
       return Column(
         children: [
           const Text('❌ حدث خطأ أثناء جلب الأخبار من الخادم.', style: TextStyle(color: Colors.red, fontSize: 16)),
           TextButton(
-            onPressed: _fetchNewsData, 
+            onPressed: _fetchNewsData,
             child: const Text('أعد المحاولة الآن', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       );
     }
-    
+
     // عرض رسالة في حالة عدم وجود أخبار
     if (_latestNews.isEmpty) {
       return const Center(child: Text('لا توجد أخبار كنسية لعرضها حالياً.'));
@@ -701,30 +727,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: Card(
             elevation: 2,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            color: AppColors.cardColor, 
+            color: AppColors.cardColor,
             child: ListTile(
-              leading: const Icon(Icons.article, color: AppColors.primaryBlue), 
-              
-              title: Text(post.title, 
-                maxLines: 1, 
+              leading: Icon(Icons.article, color: primary),
+
+              title: Text(post.title,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary), 
+                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                 textAlign: TextAlign.right,
               ),
               subtitle: Text(
-                '${_formatDate(post.date)} - ${post.body}', 
+                '${_formatDate(post.date)} - ${post.body}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), 
-                textAlign: TextAlign.right,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
               onTap: () {
              Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => NewsPage(), 
-                    // تأكد أن NewsDetailsPage هو اسم الصفحة التي ستنشئها
+                    builder: (context) => NewsPage(),
                   ),
                 );              },
             ),
@@ -732,6 +756,224 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         );
       }).toList(),
     );
-  
+
+  }
+}
+
+
+// ******************************************************************
+// ❄️ الـ Widget المخصص لتأثير تساقط الثلج (بدون تغيير)
+// ******************************************************************
+
+// 1. نموذج بيانات لرقاقة الثلج
+class SnowFlake {
+  double x;
+  double y;
+  double radius;
+  double speed;
+
+  SnowFlake(this.x, this.y, this.radius, this.speed);
+}
+
+class _SnowfallWidget extends StatefulWidget {
+  const _SnowfallWidget();
+
+  @override
+  State<_SnowfallWidget> createState() => _SnowfallWidgetState();
+}
+
+class _SnowfallWidgetState extends State<_SnowfallWidget> {
+  late Timer _timer;
+  final List<SnowFlake> _snowflakes = [];
+  final Random _random = Random();
+
+  // عدد رقاقات الثلج التي ستظهر
+  static const int numberOfFlakes = 50;
+
+  @override
+  void initState() {
+    super.initState();
+    // إنشاء رقاقات ثلج عشوائية عند بدء التشغيل
+    _createSnowflakes();
+    // تحديث مكان الثلج كل 50 ملي ثانية
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      _updateSnowflakes();
+    });
+  }
+
+  // تهيئة مكان وحجم الثلج
+  void _createSnowflakes() {
+    for (int i = 0; i < numberOfFlakes; i++) {
+      _snowflakes.add(SnowFlake(
+        _random.nextDouble(), // x (نسبة من العرض)
+        _random.nextDouble(), // y (نسبة من الارتفاع)
+        _random.nextDouble() * 2.0 + 1.0, // Radius (1.0 to 3.0)
+        _random.nextDouble() * 1.5 + 1.0, // Speed (1.0 to 2.5)
+      ));
+    }
+  }
+
+  // تحديث مكان الثلج للحركة
+  void _updateSnowflakes() {
+    if (!mounted) return;
+    setState(() {
+      for (var flake in _snowflakes) {
+        // زيادة الإحداثي y (لتسقط)
+        flake.y += flake.speed * 0.001;
+
+        // إعادة الرقاقة إلى الأعلى إذا وصلت للأسفل
+        if (flake.y > 1.0) {
+          flake.y = 0.0;
+          flake.x = _random.nextDouble(); // تغيير مكان x عشوائياً
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel(); // إيقاف المؤقت
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // استخدام CustomPaint لرسم الثلج
+    return CustomPaint(
+      painter: _SnowfallPainter(_snowflakes),
+      child: Container(),
+    );
+  }
+}
+
+// 2. الرسام المخصص لرسم الثلج
+class _SnowfallPainter extends CustomPainter {
+  final List<SnowFlake> snowflakes;
+
+  _SnowfallPainter(this.snowflakes);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.christmasSnow.withOpacity(0.9) // لون الثلج
+      ..style = PaintingStyle.fill;
+
+    for (var flake in snowflakes) {
+      // ضرب النسبة في حجم الشاشة الفعلي
+      final x = flake.x * size.width;
+      final y = flake.y * size.height;
+
+      // رسم دائرة لتمثيل رقاقة الثلج
+      canvas.drawCircle(Offset(x, y), flake.radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SnowfallPainter oldDelegate) {
+    return true; // يجب إعادة الرسم في كل تحديث للحركة
+  }
+}
+
+
+// ******************************************************************
+// 🎄 الـ Widget المخصص لزينة الكريسماس (العنقود/الإكليل)
+// ******************************************************************
+
+class _ChristmasGarlandWidget extends StatelessWidget {
+  const _ChristmasGarlandWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    // استخدام Align لوضع الزينة في الأعلى
+    return const Align(
+      alignment: Alignment.topRight, // نستخدم اليمين ليتناسب مع اتجاه الشاشة (RTL)
+      child: Padding(
+        padding: EdgeInsets.only(top: 0.0, left: 10, right: 10), // مسافة من الحافة
+        child: SizedBox(
+          width: 200, // عرض ثابت للزينة
+          height: 80, // ارتفاع ثابت للزينة (لأنها في الأعلى فقط)
+          // نستخدم CustomPaint لرسم شكل الزينة
+          child: CustomPaint(
+            painter: _GarlandPainter(),
+            child: SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 2. الرسام المخصص لرسم الزينة (Garland Painter)
+class _GarlandPainter extends CustomPainter {
+  // 👈 يجب أن يكون المنشئ الثابت أولاً
+  const _GarlandPainter(); 
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. رسم الإكليل الأخضر (الخيط الرئيسي)
+    final path = Path();
+    // نقطة البداية: أعلى اليسار (0, 0)
+    path.moveTo(0, 0); 
+    
+    // رسم منحنى يبدأ من اليسار ويمتد لمنتصف الشاشة العرضية 
+    // تم تعديل نقاط السيطرة لجعله أكثر انحداراً
+    path.quadraticBezierTo(
+      size.width * 0.5,     // x نقطة السيطرة (في المنتصف)
+      size.height * 2.0,    // y نقطة السيطرة (زيادة الانحدار للأسفل)
+      size.width,           // نقطة النهاية: أعلى اليمين
+      1.0,
+    );
+
+    final garlandPaint = Paint()
+      ..color = const Color.fromARGB(255, 255, 0, 0) // لون خيط التعليق
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(path, garlandPaint);
+
+    // 2. إعداد أسلوب رسم خطوط التعليق
+    final stringPaint = Paint()
+      ..color = const Color.fromARGB(255, 255, 68, 0) // لون خيط التعليق
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    
+    // 3. إعداد الكرات المعلقة (Ornament Balls)
+    final List<Map<String, dynamic>> ornaments = [
+        {'x': size.width * 0.1, 'y_offset': 10.0, 'is_red': true},
+        {'x': size.width * 0.3, 'y_offset': 40.0, 'is_red': false}, // أعمق
+        {'x': size.width * 0.5, 'y_offset': 55.0, 'is_red': true},  // أعمق نقطة في المنتصف
+        {'x': size.width * 0.7, 'y_offset': 40.0, 'is_red': false},
+        {'x': size.width * 0.9, 'y_offset': 10.0, 'is_red': true},
+    ];
+
+    final redBallPaint = Paint()..color = AppColors.christmasRed;
+    final goldBallPaint = Paint()..color = Colors.amber; 
+
+    for (var ornament in ornaments) {
+      final ballRadius = 8.0;
+      final x = ornament['x'] as double;
+      final yOffset = ornament['y_offset'] as double;
+      final ballColor = ornament['is_red'] ? redBallPaint : goldBallPaint;
+      
+      final ballPosition = Offset(x, yOffset);
+
+      // رسم خط التعليق أولاً (يبدأ من الإكليل وينتهي عند الكرة)
+      // نبدأ الخط من نقطة قريبة جداً من القمة (y=5) وننزل إلى موضع الكرة
+      canvas.drawLine(
+        Offset(x, 5), 
+        ballPosition, 
+        stringPaint
+      );
+      
+      // رسم الكرات
+      canvas.drawCircle(ballPosition, ballRadius, ballColor);
+      
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GarlandPainter oldDelegate) {
+    return false; // لا حاجة لإعادة الرسم ما لم تتغير البيانات
   }
 }

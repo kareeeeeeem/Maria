@@ -1,4 +1,4 @@
-import 'package:churchapp/screens/homepage.dart';
+import 'package:churchapp/screens/HomePage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // استيراد Firebase Auth
 
@@ -85,9 +85,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               RoundGradientButton(
                 title: "Go To Home",
                 onPressed: () {
-                  // بعد شاشة الترحيب، يتم التوجيه إلى لوحة التحكم (Dashboard)
-                  Navigator.pushNamed(context, HomePage() as String);
-                },
+    // ✅ تصحيح التوجيه باستخدام اسم المسار الثابت
+    Navigator.pushNamedAndRemoveUntil(
+      context, 
+      '/HomePage', // اسم المسار الصحيح
+      (route) => false, // لإزالة جميع الشاشات السابقة من المكدس
+    );
+  },
               )
             ],
           ),

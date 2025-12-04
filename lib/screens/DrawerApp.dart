@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../const/constants.dart'; // افترض وجود هذا الملف
+import 'dart:async'; // تم إضافتها لمعالجة الـ StreamSubscription في الكود السابق، ولكن الكود الحالي يستخدم StreamBuilder
 
 // نحولها إلى StatefulWidget للتعامل مع جلب البيانات من Firestore
 class AppDrawer extends StatefulWidget {
@@ -38,40 +39,50 @@ class _AppDrawerState extends State<AppDrawer> {
     {'title': ' الأخبار والإعلانات', 'icon': Icons.newspaper, 'route': '/news', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' المكتبه', 'icon': Icons.library_add, 'route': '/InventoryPage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الافتقاد', 'icon': Icons.handshake, 'route': '/service', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' أجندة الأعياد', 'icon': Icons.calendar_month, 'route': '/feasts', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
     {'title': ' مطور التطبيق', 'icon': Icons.developer_board, 'route': '/HowUsViewPage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
-    {'title': ' أجندة الأعياد', 'icon': Icons.calendar_view_month, 'route': '/feasts', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
-    {'title': ' مدارس الاحد', 'icon': Icons.school_outlined, 'route': '/SundaySchoolHome', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': true, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
     
+    
+    {'title': ' مدارس الاحد', 'icon': Icons.school_outlined, 'route': '/SundaySchoolHome', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': true, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false}, 
     // 🔔 عنصر إرسال الاشعارات: يتطلب إما المدير العام أو مرسل الإشعارات (تم التعديل هنا)
-   {'title': ' ارسال الاشعارات', 'icon': Icons.notification_add_outlined, 'route': '/AdminNotificationPage', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': true},
-  
+    {'title': ' ارسال الاشعارات', 'icon': Icons.notification_add_outlined, 'route': '/AdminNotificationPage', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': true},
     // 🔍 عنصر سجل طلبات الافتقاد: يتطلب إما المدير العام أو مدير شؤون المفقودين
     {'title': 'سجل طلبات الافتقاد', 'icon': Icons.home_mini, 'route': '/AdminRequestsPage', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': true, 'requiresNotificationSender': false},
-  
-   
    // ⛪ عنصر سجل الكنيسة: يتطلب المدير العام فقط
-   {'title': ' سجل الكنيسه', 'icon': Icons.people_alt, 'route': '/VisitationScreen', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
-   {'title': ' اجنده الاعياد', 'icon': Icons.people_alt, 'route': '/feasts', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' سجل الكنيسه', 'icon': Icons.people_alt, 'route': '/VisitationScreen', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' اجنده الاعياد', 'icon': Icons.people_alt, 'route': '/feasts', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
 
   
   ];
 
+  // في هذه النسخة، لم يعد هناك حاجة لـ StreamSubscription لأننا نستخدم StreamBuilder أدناه.
+  // تم ترك هذه الدالة فارغة لأن منطق تحديث الحالة يتم داخل StreamBuilder الآن.
+  // ** ملاحظة: تم حذف المتغير _authStateSubscription ودالة initState التي استخدمت هذا الاشتراك لتجنب التضارب مع StreamBuilder. **
+
   @override
   void initState() {
     super.initState();
+    // ** منطق جلب الدور يتم تنفيذه مرة واحدة عند تسجيل الدخول الأول **
     // 💡 الاستماع لحالة المصادقة لبدء جلب بيانات Firestore
+    // هذا المستمع آمن لأنه لا يستخدم setState مباشرة
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
-        _fetchUserRole(user.uid);
+        // نستخدم mounted للتحقق قبل استدعاء _fetchUserRole، والذي بدوره يتحقق من mounted قبل setState
+        if (mounted) {
+          _fetchUserRole(user.uid);
+        }
       } else {
-        // إعادة تعيين الحالة عند الخروج
-        setState(() {
-          _isAdmin = false;
-          _isSchoolManager = false; 
-          _isMissingPersonManager = false; 
-          _isNotificationSender = false; // إعادة تعيين الدور الجديد
-          _userExtraData = null;
-        });
+        // إعادة تعيين الحالة عند الخروج (يحدث هذا عند SignOut)
+        // يتم التحقق من mounted داخل setState في _fetchUserRole، ولكن هنا يجب التحقق أيضاً
+        if (mounted) {
+          setState(() {
+            _isAdmin = false;
+            _isSchoolManager = false; 
+            _isMissingPersonManager = false; 
+            _isNotificationSender = false;
+            _userExtraData = null;
+          });
+        }
       }
     });
   }
@@ -264,9 +275,9 @@ class _AppDrawerState extends State<AppDrawer> {
                   
                   if (isLoggedIn) {
                     await AuthService().signOut();
-                    // 🔄 الانتقال إلى مسار شاشة البداية /StartScreen
+                    // 🎯 هذا هو التعديل المطلوب: الخروج إلى شاشة البداية وإزالة جميع المسارات السابقة
                     Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/StartScreen', // ⬅️ تم التعديل إلى مسار شاشة البداية
+                      '/StartScreen', 
                       (Route<dynamic> route) => false,
                     );
                   } else {

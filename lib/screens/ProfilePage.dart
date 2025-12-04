@@ -367,8 +367,8 @@ class _ProfilePageState extends State<ProfilePage> {
       //   ),
       //   trailing: ElevatedButton(
       //     onPressed: () {
-      //       // التوجيه إلى شاشة إدخال البيانات - يجب أن يكون المسار '/member_data_entry' معرفاً في MaterialApp
-      //       Navigator.pushNamed(context, '/member_data_entry'); 
+      //       // التوجيه إلى شاشة إدخال البيانات - يجب أن يكون المسار '/MemberDataEntryScreen' معرفاً في MaterialApp
+      //       Navigator.pushNamed(context, '/MemberDataEntryScreen'); 
       //     },
       //     style: ElevatedButton.styleFrom(
       //       backgroundColor: AppColors.accentColor,

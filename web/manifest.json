@@ -1,11 +1,11 @@
 {
-    "name": "churchapp",
-    "short_name": "churchapp",
+    "name": "Maria",
+    "short_name": "Maria",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#000000",
-    "description": "A new Flutter project.",
+    "description": "MY Church",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

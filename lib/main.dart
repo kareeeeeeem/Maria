@@ -1,6 +1,9 @@
 // lib/main.dart
 
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
+import 'package:churchapp/aus/signup/MemberShipSignUp.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; 
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -117,11 +120,23 @@ Future<void> main() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   final String? userToken = prefs.getString('user_token');
   
+  final bool? dataCompleted = prefs.getBool('data_completed'); 
+print("حالة التوكن: ${userToken != null ? 'موجود' : 'غير موجود'}");
+print("حالة اكتمال البيانات: $dataCompleted");
+
   if (userToken != null && userToken.isNotEmpty) {
+  // المستخدم مسجل دخوله (لديه توكن)
+  if (dataCompleted == true) {
+    // 1. التوكن موجود والبيانات مكتملة: اذهب إلى الصفحة الرئيسية
     initialRoute = '/HomePage'; 
   } else {
-    initialRoute = '/'; 
+    // 2. التوكن موجود لكن البيانات غير مكتملة (أو المفتاح غير موجود): اذهب لجمع البيانات
+    initialRoute = MemberDataEntryScreen.routeName; // /MemberDataEntryScreen
   }
+} else {
+  // 3. لا يوجد توكن: اذهب إلى صفحة تسجيل الدخول / Sign Up
+  initialRoute = '/'; // (الذي يوجه إلى UserSignUpScreen أو LoginScreen)
+}
 
   runApp(const MyApp());
 }

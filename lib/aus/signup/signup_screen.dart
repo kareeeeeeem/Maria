@@ -48,7 +48,8 @@ class _UserSignUpScreenState extends State<UserSignUpScreen> {
   
   bool _isFacebookLoading = false;
   bool _isLoading = false;
-  String? _errorMessage;
+  // تم إلغاء _errorMessage للاعتماد على SnackBar
+  String? _errorMessage; // تم الإبقاء عليه فقط لمعالجة خطأ عدم تطابق كلمة المرور
 
   @override
   void dispose() {
@@ -60,11 +61,47 @@ class _UserSignUpScreenState extends State<UserSignUpScreen> {
   }
 
 
-
-
 // =========================================================================
-  // . apple Logic (تم التعديل)
-  // =========================================================================
+// 3. Firebase Error Helper Function (جديد)
+// =========================================================================
+String _getFirebaseAuthErrorMessage(String errorCode) {
+    switch (errorCode) {
+      // الأخطاء المتعلقة ببيانات الاعتماد والمستخدم
+      case 'account-exists-with-different-credential':
+        return 'يوجد حساب مرتبط بنفس البريد الإلكتروني. يرجى تسجيل الدخول بالطريقة الأخرى (Google/Email) لربط حسابك.'; 
+      case 'weak-password':
+        return 'كلمة المرور ضعيفة جدًا. يرجى اختيار كلمة مرور أقوى.';
+      case 'email-already-in-use':
+        return 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد آخر.';
+      case 'invalid-email':
+        return 'صيغة البريد الإلكتروني غير صالحة.';
+      case 'user-disabled':
+        return 'تم تعطيل هذا الحساب من قبل المسؤول.';
+      case 'operation-not-allowed':
+        return 'عملية المصادقة غير مسموحة. (تأكد من تفعيل المزود في Firebase).';
+      case 'invalid-credential':
+        return 'بيانات الاعتماد غير صالحة.';
+      case 'user-not-found':
+        return 'لم يتم العثور على مستخدم مسجل بهذا البريد.';
+      case 'wrong-password':
+        return 'كلمة المرور غير صحيحة.';
+
+      // ** الأخطاء المتعلقة بالشبكة والاتصال (لحل مشكلة ضعف/فصل النت) **
+      case 'unavailable':
+      case 'network-request-failed':
+        return 'فشل الاتصال. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.';
+      case 'timeout':
+        return 'انتهت مهلة الاتصال بالخادم. يرجى المحاولة لاحقًا.';
+
+      // رسالة الخطأ الافتراضية لأي خطأ آخر غير مغطى
+      default:
+        return 'فشل عملية المصادقة: $errorCode';
+    }
+}
+  
+// =========================================================================
+// 4. Apple Logic (تم التعديل)
+// =========================================================================
 Future<void> _signInWithApple() async {
   setState(() => _isLoading = true);
   try {
@@ -72,7 +109,6 @@ Future<void> _signInWithApple() async {
       scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
     );
 
-    // إنشاء Credential لتسجيل الدخول إلى Firebase
     final oAuthProvider = OAuthProvider('apple.com');
     final authCredential = oAuthProvider.credential(
       idToken: credential.identityToken,
@@ -89,8 +125,10 @@ Future<void> _signInWithApple() async {
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_token', idToken); 
         print("✅ تم حفظ التوكن (Apple) في SharedPreferences بنجاح.");
+        await prefs.setBool('data_completed', false); 
+        print("✅ تم حفظ التوكن وحالة البيانات (غير مكتملة) .");
     }
-      // تحقق من وجود المستخدم في Firestore
+      
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       if (!userDoc.exists) {
@@ -110,18 +148,27 @@ Future<void> _signInWithApple() async {
         Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
     }
+  } on FirebaseAuthException catch (e) {
+      String message = _getFirebaseAuthErrorMessage(e.code);
+      if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+          );
+      }
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Apple Sign-In failed: $e')),
-    );
+    if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل تسجيل الدخول عبر Apple: ${e.toString()}')),
+        );
+    }
   } finally {
     setState(() => _isLoading = false);
   }
 }
 
 // =========================================================================
-  // . googel Logic (تم التعديل)
-  // =========================================================================
+// 5. Google Logic (تم التعديل)
+// =========================================================================
 Future<void> _signInWithGoogle() async {
   setState(() => _isLoading = true);
   try {
@@ -153,6 +200,8 @@ Future<void> _signInWithGoogle() async {
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_token', idToken); // 👈 **هنا يتم الحفظ**
         print("✅ تم حفظ التوكن (Google) في SharedPreferences بنجاح.");
+        await prefs.setBool('data_completed', false); 
+        print("✅ تم حفظ التوكن وحالة البيانات (غير مكتملة) .");
     }
       // حفظ بيانات المستخدم في Firestore لو جديد
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
@@ -175,24 +224,32 @@ Future<void> _signInWithGoogle() async {
     }
 
 
+  } on FirebaseAuthException catch (e) {
+      String message = _getFirebaseAuthErrorMessage(e.code);
+      if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+          );
+      }
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Google Sign-In failed: $e')),
-    );
+    if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل تسجيل الدخول عبر Google: ${e.toString()}')),
+        );
+    }
   } finally {
     setState(() => _isLoading = false);
   }
 }
 
-  
 // =========================================================================
-  // 3. facebooklogin Logic (تم التعديل)
-  // =========================================================================
+// 6. Facebook Logic (تم التعديل)
+// =========================================================================
 Future<void> _signInWithFacebook() async {
   setState(() => _isFacebookLoading = true);
 
   try {
-    await FacebookAuth.instance.logOut(); // تأمين الجلسة القديمة
+    await FacebookAuth.instance.logOut(); 
 
     final LoginResult result = await FacebookAuth.instance.login(
       loginBehavior: LoginBehavior.webOnly, 
@@ -201,7 +258,7 @@ Future<void> _signInWithFacebook() async {
 
     if (result.status == LoginStatus.success) {
       final credential = FacebookAuthProvider.credential(
-        result.accessToken!.tokenString,
+        result.accessToken!.token,
       );
 
       final userCredential =
@@ -210,14 +267,14 @@ Future<void> _signInWithFacebook() async {
       final user = userCredential.user;
 
       if (user != null) {
-
-
         final String? idToken = await user.getIdToken();
-    if (idToken != null) {
-        final SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_token', idToken); 
-        print("✅ تم حفظ التوكن (Facebook) في SharedPreferences بنجاح.");
-    }
+        if (idToken != null) {
+            final SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_token', idToken); 
+            print("✅ تم حفظ التوكن (Facebook) في SharedPreferences بنجاح.");
+            await prefs.setBool('data_completed', false); 
+            print("✅ تم حفظ التوكن وحالة البيانات (غير مكتملة) .");
+        }
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -239,48 +296,57 @@ Future<void> _signInWithFacebook() async {
         }
       }
     } else if (result.status == LoginStatus.cancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Facebook login cancelled")),
-      );
+        if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("تم إلغاء تسجيل الدخول عبر فيسبوك")),
+            );
+        }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Facebook login failed: ${result.message}")),
-      );
+        if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("فشل تسجيل الدخول عبر فيسبوك: ${result.message}")),
+            );
+        }
     }
+  } on FirebaseAuthException catch (e) {
+      String message = _getFirebaseAuthErrorMessage(e.code);
+      if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+          );
+      }
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error during Facebook login: $e")),
-    );
+    if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("خطأ غير متوقع أثناء تسجيل الدخول عبر فيسبوك: ${e.toString()}")),
+        );
+    }
   } finally {
     setState(() => _isFacebookLoading = false);
   }
 }
 
-  
-
-  // Sign Up Function (صحيحة بالفعل)
-  Future<void> _signUp() async {
-    // ⚠️ يتم التحقق من صحة جميع الحقول، بما في ذلك الاسم الرباعي، هنا
+// =========================================================================
+// 7. Sign Up Function (تم التعديل)
+// =========================================================================
+Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // Check if passwords match
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() {
-        _errorMessage = 'Passwords do not match.';
+        _errorMessage = 'كلمتا المرور غير متطابقتين.'; // ⚠️ هنا سنستخدم _errorMessage لتحديث UI
       });
       return;
     }
     
-    // Dismiss keyboard
     FocusScope.of(context).unfocus();
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _errorMessage = null; // إعادة تعيين رسالة الخطأ
     });
 
     try {
-      // 1. Create user in Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -289,7 +355,6 @@ Future<void> _signInWithFacebook() async {
       final User? user = userCredential.user;
 
       if (user != null) {
-          // 2. حفظ بيانات المستخدم في Firestore
           await _firestore.collection('users').doc(user.uid).set({
             'email': user.email!.toLowerCase(), 
             'fullName': _nameController.text.trim(),
@@ -297,42 +362,32 @@ Future<void> _signInWithFacebook() async {
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-
           final String? idToken = await user.getIdToken();
-    if (idToken != null) {
-        final SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_token', idToken); // 👈 **هنا يتم الحفظ**
-        print("✅ تم حفظ التوكن في SharedPreferences بنجاح.");
-    }
-          
-
-
-          // Optional Step: Update User's Display Name
+          if (idToken != null) {
+              final SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_token', idToken); 
+              await prefs.setBool('data_completed', false); 
+          }
           await user.updateDisplayName(_nameController.text.trim());
       }
       
-
-      // Authentication successful, navigate to the main screen
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
       
     } on FirebaseAuthException catch (e) {
-      String message = 'Failed to create account. Please try again.';
-      if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'The account already exists for that email.';
-      } else if (e.code == 'invalid-email') {
-        message = 'The email address is not valid.';
-      }
-      setState(() {
-        _errorMessage = message;
-      });
+        String message = _getFirebaseAuthErrorMessage(e.code);
+        if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(message)),
+            );
+        }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Unexpected error: $e';
-      });
+      if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('خطأ غير متوقع: ${e.toString()}')),
+          );
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -341,26 +396,24 @@ Future<void> _signInWithFacebook() async {
   }
 
 
-
+// =========================================================================
+// 8. Build Method (UI) - تم إزالة منطق عرض _errorMessage من النص
+// =========================================================================
   @override
   Widget build(BuildContext context) {
-    // 🌟 تصميم مبهر: خلفية داكنة مع تباين قوي
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
-          // ⚠️ افتراض مسار صورة مناسبة للكنيسة
           image: AssetImage("assets/images/church_background.png"), 
-          fit: BoxFit.cover, // لتغطية كامل الشاشة
+          fit: BoxFit.cover,
           ),
       ),
       child: Stack(
         children: [
-          // طبقة التعتيم الداكنة (Dark Overlay) لزيادة وضوح النص
           Container(
             color: Colors.black.withOpacity(0.7), 
           ),
        Scaffold(
-       // ✅ لجعل الخلفية تظهر من خلال Scaffold
        backgroundColor: Colors.transparent, 
         body: Center(
           child: SingleChildScrollView(
@@ -375,9 +428,8 @@ Future<void> _signInWithFacebook() async {
                   const Text(
                     'إنشاء حساب', 
                     style: TextStyle(
-                      // 🌟 لون أبيض لامع على خلفية داكنة
                       color: AppColors.whiteColor, 
-                      fontSize: 34, // خط أكبر
+                      fontSize: 34, 
                       fontWeight: FontWeight.w900,
                       shadows: [
                         Shadow(color: AppColors.accentColor, blurRadius: 1)
@@ -390,16 +442,15 @@ Future<void> _signInWithFacebook() async {
                   Text(
                     ' اذا اول مره تفتح التطبيق', 
                     style: TextStyle(
-                      // 🌟 لون ذهبي خفيف
                       color: AppColors.accentColor.withOpacity(0.8), 
-                      fontSize: 18, // خط أكبر قليلاً
+                      fontSize: 18, 
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
       
-                  // Full Name Field (تم تعديل الـ validator هنا)
+                  // Full Name Field 
                   _buildTextField(
                     controller: _nameController,
                     label: 'الاسم رباعي', 
@@ -409,9 +460,6 @@ Future<void> _signInWithFacebook() async {
                         return 'الرجاء إدخال الاسم الكامل';
                       }
                       
-                      // 💡 المنطق الجديد: التحقق من عدد الكلمات (الأسماء)
-                      // يقسم السلسلة بواسطة مسافة واحدة أو أكثر (RegExp(r'\s+'))
-                      // ويزيل أي سلاسل فارغة ناتجة عن المسافات المزدوجة أو المسافات البادئة/اللاحقة
                       final names = value.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
 
                       if (names.length < 4) {
@@ -466,7 +514,7 @@ Future<void> _signInWithFacebook() async {
                     },
                   ),
       
-                  // Error Message
+                  // Error Message (تم إبقاؤه فقط لخطأ عدم تطابق كلمة المرور)
                   if (_errorMessage != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 15.0),
@@ -479,7 +527,7 @@ Future<void> _signInWithFacebook() async {
       
                   const SizedBox(height: 40),
       
-                  // Sign Up Button (CTA - مع تدرج لوني)
+                  // Sign Up Button 
                   _buildSignUpButton(),
       
       
@@ -487,28 +535,25 @@ Future<void> _signInWithFacebook() async {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      // 🌟 Divider بلون ذهبي
                       const Expanded(child: Divider(color: AppColors.accentColor, thickness: 1.2)), 
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10.0),
                         child: Text(
                           'أو تابع بواسطة', 
                           style: TextStyle(
-                            // 🌟 لون ذهبي خفيف
                             color: AppColors.accentColor.withOpacity(0.8), 
                             fontSize: 14),
                         ),
                       ),
-                      // 🌟 Divider بلون ذهبي
                       const Expanded(child: Divider(color: AppColors.accentColor, thickness: 1.2)), 
                     ],
                   ),
                   const SizedBox(height: 10),
       
-                  // Apple Login Button (بقي كما هو - أسود)
+                  // Apple Login Button 
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.8,
-                    height: 50, // ارتفاع أكبر قليلاً
+                    height: 50, 
                     child: ElevatedButton.icon(
                       onPressed: _isLoading ? null : _signInWithApple,
                       icon: const Icon(Icons.apple, size: 28, color: Colors.white),
@@ -526,17 +571,17 @@ Future<void> _signInWithFacebook() async {
                           borderRadius: BorderRadius.circular(30),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 5, // ظل أوضح
+                        elevation: 5, 
                       ),
                     ),
                   ),
       
                   const SizedBox(height: 10),
       
-                  // Google Login Button (بقي كما هو - أحمر)
+                  // Google Login Button 
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.8,
-                    height: 50, // ارتفاع أكبر قليلاً
+                    height: 50, 
                     child: ElevatedButton.icon(
                       onPressed: _isLoading ? null : _signInWithGoogle,
                       icon: const Icon(
@@ -566,10 +611,10 @@ Future<void> _signInWithFacebook() async {
                 
                   const SizedBox(height: 10),
       
-                  // Facebook Login Button (بقي كما هو - أزرق فيسبوك)
+                  // Facebook Login Button 
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.8, 
-                    height: 50, // ارتفاع أكبر قليلاً
+                    height: 50, 
                     child: ElevatedButton.icon(
                       onPressed: _isLoading || _isFacebookLoading ? null : _signInWithFacebook,
                       icon: const Icon(Icons.facebook, color: Colors.white),
@@ -591,7 +636,7 @@ Future<void> _signInWithFacebook() async {
                               ),
                             ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1877F2), // Facebook Blue
+                        backgroundColor: const Color(0xFF1877F2), 
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 5,
@@ -609,7 +654,6 @@ Future<void> _signInWithFacebook() async {
                       Text(
                         'اذا لديك حساب بالفعل', 
                         style: TextStyle(
-                          // 🌟 لون أبيض خفيف
                           color: AppColors.whiteColor.withOpacity(0.7), 
                           fontSize: 14),
                       ),
@@ -624,7 +668,6 @@ Future<void> _signInWithFacebook() async {
       
                         child: const Text(
                           'اضغط هنا', 
-                          // 🌟 لون أساسي جديد
                           style: TextStyle(color: AppColors.primaryColor1, fontSize: 14, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -641,15 +684,14 @@ Future<void> _signInWithFacebook() async {
   }
 
 
+// =========================================================================
+// 9. Widget Helpers
+// =========================================================================
 
-
-
-
-  // Sign Up Button Widget (باستخدام تدرج لوني)
+  // Sign Up Button Widget 
   Widget _buildSignUpButton() {
     return Container(
       decoration: BoxDecoration(
-        // 🌟 تطبيق التدرج اللوني هنا
         gradient: const LinearGradient(
           colors: AppColors.accentGradient,
           begin: Alignment.topLeft,
@@ -667,18 +709,18 @@ Future<void> _signInWithFacebook() async {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _signUp,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent, // لجعل التدرج يظهر
+          backgroundColor: Colors.transparent, 
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
           padding: const EdgeInsets.symmetric(vertical: 18),
-          elevation: 0, // إزالة ظل الزر الأصلي
+          elevation: 0, 
         ),
         child: _isLoading 
-            ? const SizedBox(height: 10, width: 10, child: CircularProgressIndicator(color: AppColors.primaryDark, strokeWidth: 2)) // لون الداكن للخلفية
+            ? const SizedBox(height: 10, width: 10, child: CircularProgressIndicator(color: AppColors.primaryDark, strokeWidth: 2)) 
             : const Text(
                 'تسجيل عضوية جديدة', 
                 style: TextStyle(
-                  color: AppColors.primaryDark, // لون داكن للنص يبرز على الذهبي
+                  color: AppColors.primaryDark, 
                   fontSize: 18, 
                   fontWeight: FontWeight.w900,
                 ),
@@ -687,7 +729,7 @@ Future<void> _signInWithFacebook() async {
     );
   }
 
-  // Styled Text Field Widget (Updated for Dark/Royal Theme)
+  // Styled Text Field Widget 
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -701,13 +743,10 @@ Future<void> _signInWithFacebook() async {
       obscureText: isPassword,
       keyboardType: keyboardType,
       validator: validator,
-      // 🌟 النص المدخل أصبح بلون أبيض بارز
       style: const TextStyle(color: AppColors.whiteColor, fontWeight: FontWeight.w600), 
       decoration: InputDecoration(
         labelText: label,
-        // 🌟 أيقونة بلون ذهبي بارز
         prefixIcon: Icon(icon, color: AppColors.accentColor), 
-        // 🌟 الـ Label باللون الأبيض الخفيف
         labelStyle: const TextStyle(color: AppColors.whiteColor, fontWeight: FontWeight.w400), 
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
@@ -719,7 +758,6 @@ Future<void> _signInWithFacebook() async {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          // 🌟 حدود واضحة بلون ذهبي
           borderSide: const BorderSide(color: AppColors.accentColor, width: 2), 
         ),
         errorBorder: OutlineInputBorder(
@@ -730,7 +768,6 @@ Future<void> _signInWithFacebook() async {
           borderRadius: BorderRadius.circular(15),
           borderSide: const BorderSide(color: AppColors.redColor, width: 2),
         ),
-        // 🌟 خلفية الحقول داكنة وأكثر وضوحاً
         fillColor: AppColors.primaryDark.withOpacity(0.8), 
         filled: true,
       ),
