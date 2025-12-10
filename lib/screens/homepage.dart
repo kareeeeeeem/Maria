@@ -1,4 +1,4 @@
-// File: lib/screens/HomePage.dart
+// File: lib/screens//HomePage.dart
 
 import 'package:churchapp/screens/NewsPage.dart';
 import 'package:churchapp/screens/notification/notification_screen.dart';
@@ -209,7 +209,7 @@ bool isChristmasSeason(DateTime now) {
 // ==================================================================
 
 class HomePage extends StatefulWidget {
-  static const String routeName = "/HomePage";
+  static const String routeName = "//HomePage";
   const HomePage({super.key});
 
   @override

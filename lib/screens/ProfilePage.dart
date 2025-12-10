@@ -157,8 +157,8 @@ class _ProfilePageState extends State<ProfilePage> {
           const SnackBar(content: Text('تم تسجيل الخروج بنجاح. نلقاك لاحقاً!')),
         );
         // يجب التوجيه إلى شاشة تسجيل الدخول
-        // يتم افتراض وجود مسار تسجيل الدخول '/login'
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+        // يتم افتراض وجود مسار تسجيل الدخول '/user_login'
+        Navigator.pushNamedAndRemoveUntil(context, '/user_login', (route) => false);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 label: 'انتقال لتسجيل الدخول', 
                 icon: Icons.login, 
                 color: AppColors.primaryBlue, 
-                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false)
+                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/user_login', (route) => false)
               ),
             ],
           ),

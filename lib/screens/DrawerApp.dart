@@ -31,7 +31,7 @@ class _AppDrawerState extends State<AppDrawer> {
         {'title': 'الإنجيل', 'icon': Icons.menu_book, 'route': '/bible', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
         // {'title': 'الأجبية', 'icon': Icons.brightness_3, 'route': '/agpeya', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
 
-    // {'title': ' الصفحة الرئيسية', 'icon': Icons.home, 'route': '/HomePage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    // {'title': ' الصفحة الرئيسية', 'icon': Icons.home, 'route': '//HomePage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' القداسات والعشيات', 'icon': Icons.church, 'route': '/masses', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الخمس خبزات وسمكتين', 'icon': Icons.restaurant, 'route': '/StorePage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
     {'title': ' الاجتماعات الأسبوعية', 'icon': Icons.people, 'route': '/meetings', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
@@ -144,19 +144,18 @@ class _AppDrawerState extends State<AppDrawer> {
       }
     } else {
       // حالة الزائر
-      name = 'أهلاً بك يا زائر';
+     name = 'يرجى تسجيل الدخول'; // ⬅️ تم تغيير النص
     }
     
     String emailOrStatus = isLoggedIn 
         ? (user?.email ?? 'مُسجَّل الدخول') 
-        : 'اضغط للتسجيل';
-        
+        : 'للوصول إلى التطبيق'; // ⬅️ تم تغيير النص
 
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
         if (!isLoggedIn) {
-          Navigator.pushNamed(context, '/login'); 
+          Navigator.pushNamed(context, '/StartScreen'); 
         } else {
           Navigator.pushNamed(context, '/profile');
         }
@@ -270,20 +269,25 @@ class _AppDrawerState extends State<AppDrawer> {
                 leading: Icon(isLoggedIn ? Icons.logout : Icons.login, color: Colors.red),
                 title: Text(isLoggedIn ? 'تسجيل الخروج' : 'تسجيل الدخول',
                     style: const TextStyle(color: Colors.red, fontFamily: "Cairo")),
+                
+                // 🎯 هنا يتم تصحيح دالة onTap
                 onTap: () async {
                   Navigator.pop(context);
                   
                   if (isLoggedIn) {
+                    // 1. تنفيذ تسجيل الخروج فعليًا (يمسح التوكن المحلي)
                     await AuthService().signOut();
-                    // 🎯 هذا هو التعديل المطلوب: الخروج إلى شاشة البداية وإزالة جميع المسارات السابقة
+                    
+                    // 2. الانتقال إلى شاشة تسجيل الدخول وإزالة جميع الشاشات السابقة
                     Navigator.of(context).pushNamedAndRemoveUntil(
                       '/StartScreen', 
                       (Route<dynamic> route) => false,
                     );
                   } else {
-                    Navigator.pushNamed(context, '/login'); 
+                    // إذا لم يكن مسجلاً، اذهب إلى شاشة تسجيل الدخول
+                    Navigator.pushNamed(context, '/StartScreen'); 
                   }
-                },
+                }, // ⬅️ الآن onTap ينتهي بشكل صحيح هنا
               ),
             ],
           ),

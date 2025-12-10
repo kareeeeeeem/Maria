@@ -49,6 +49,9 @@
     <key>FacebookDisplayName</key>
     <string>Maria</string>
 
+    <key>FacebookClientToken</key>
+    <string>b624a63ea2b7b2558a32d7e6e61ca2e</string>
+
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>fbapi</string>

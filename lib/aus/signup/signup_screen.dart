@@ -8,6 +8,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'dart:developer'; // لاستخدام log في Debug Console
 
 // =========================================================================
 // 1. App Colors and Helper Components (Stunning Church Theme)
@@ -48,7 +49,6 @@ class _UserSignUpScreenState extends State<UserSignUpScreen> {
   
   bool _isFacebookLoading = false;
   bool _isLoading = false;
-  // تم إلغاء _errorMessage للاعتماد على SnackBar
   String? _errorMessage; // تم الإبقاء عليه فقط لمعالجة خطأ عدم تطابق كلمة المرور
 
   @override
@@ -64,6 +64,8 @@ class _UserSignUpScreenState extends State<UserSignUpScreen> {
 // =========================================================================
 // 3. Firebase Error Helper Function (جديد)
 // =========================================================================
+
+/// تحويل كود خطأ Firebase إلى رسالة مفهومة للمستخدم.
 String _getFirebaseAuthErrorMessage(String errorCode) {
     switch (errorCode) {
       // الأخطاء المتعلقة ببيانات الاعتماد والمستخدم
@@ -92,15 +94,41 @@ String _getFirebaseAuthErrorMessage(String errorCode) {
         return 'فشل الاتصال. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.';
       case 'timeout':
         return 'انتهت مهلة الاتصال بالخادم. يرجى المحاولة لاحقًا.';
+      case 'cancelled': // قد تظهر في Google
+        return 'تم إلغاء عملية تسجيل الدخول من قبل المستخدم.';
 
       // رسالة الخطأ الافتراضية لأي خطأ آخر غير مغطى
       default:
         return 'فشل عملية المصادقة: $errorCode';
     }
 }
+
+// =========================================================================
+// 4. Global Error Handler Function (لتحقيق متطلباتك)
+// =========================================================================
+
+/// دالة مساعدة موحدة للتعامل مع أي استثناء في التسجيل الاجتماعي
+void _handleSocialLoginError(dynamic e, String providerName) {
+    log('❌ خطأ حقيقي في $providerName: ${e.toString()}', name: 'AUTH_ERROR');
+    
+    String message;
+    if (e is FirebaseAuthException) {
+        message = _getFirebaseAuthErrorMessage(e.code);
+        // طباعة كود الخطأ في ديباغ كونسول
+        log('Firebase Auth Code: ${e.code}', name: 'AUTH_ERROR'); 
+    } else {
+        message = 'خطأ غير متوقع أثناء تسجيل الدخول عبر $providerName. الرجاء المحاولة لاحقاً.';
+    }
+
+    if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+        );
+    }
+}
   
 // =========================================================================
-// 4. Apple Logic (تم التعديل)
+// 5. Apple Logic (تم التعديل)
 // =========================================================================
 Future<void> _signInWithApple() async {
   setState(() => _isLoading = true);
@@ -121,13 +149,12 @@ Future<void> _signInWithApple() async {
     if (user != null) {
 
       final String? idToken = await user.getIdToken();
-    if (idToken != null) {
-        final SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_token', idToken); 
-        print("✅ تم حفظ التوكن (Apple) في SharedPreferences بنجاح.");
-        await prefs.setBool('data_completed', false); 
-        print("✅ تم حفظ التوكن وحالة البيانات (غير مكتملة) .");
-    }
+      if (idToken != null) {
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_token', idToken); 
+          log("✅ تم حفظ التوكن (Apple) في SharedPreferences بنجاح.", name: 'AUTH_SUCCESS');
+          await prefs.setBool('data_completed', false); 
+      }
       
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
@@ -144,30 +171,18 @@ Future<void> _signInWithApple() async {
       }
 
       if (mounted) {
-        // ✅ التوجيه باستخدام اسم المسار الثابت
         Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
     }
-  } on FirebaseAuthException catch (e) {
-      String message = _getFirebaseAuthErrorMessage(e.code);
-      if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message)),
-          );
-      }
   } catch (e) {
-    if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('فشل تسجيل الدخول عبر Apple: ${e.toString()}')),
-        );
-    }
+      _handleSocialLoginError(e, 'Apple');
   } finally {
     setState(() => _isLoading = false);
   }
 }
 
 // =========================================================================
-// 5. Google Logic (تم التعديل)
+// 6. Google Logic (تم التعديل)
 // =========================================================================
 Future<void> _signInWithGoogle() async {
   setState(() => _isLoading = true);
@@ -180,7 +195,8 @@ Future<void> _signInWithGoogle() async {
     );
 
     if (googleUser == null) {
-      setState(() => _isLoading = false);
+      // المستخدم قام بإلغاء العملية يدوياً
+      _handleSocialLoginError( FirebaseAuthException(code: 'cancelled', message: 'User cancelled Google sign-in'), 'Google');
       return;
     }
 
@@ -190,19 +206,17 @@ Future<void> _signInWithGoogle() async {
       idToken: googleAuth.idToken,
     );
 
-
     final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
     final user = userCredential.user;
 
     if (user != null) {
       final String? idToken = await user.getIdToken();
-    if (idToken != null) {
-        final SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_token', idToken); // 👈 **هنا يتم الحفظ**
-        print("✅ تم حفظ التوكن (Google) في SharedPreferences بنجاح.");
-        await prefs.setBool('data_completed', false); 
-        print("✅ تم حفظ التوكن وحالة البيانات (غير مكتملة) .");
-    }
+      if (idToken != null) {
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_token', idToken); 
+          log("✅ تم حفظ التوكن (Google) في SharedPreferences بنجاح.", name: 'AUTH_SUCCESS');
+          await prefs.setBool('data_completed', false); 
+      }
       // حفظ بيانات المستخدم في Firestore لو جديد
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
@@ -218,37 +232,24 @@ Future<void> _signInWithGoogle() async {
 
       // التوجيه إلى MemberDataEntryScreenPage بعد التسجيل أو تسجيل الدخول
       if (mounted) {
-        // ✅ التوجيه باستخدام اسم المسار الثابت
         Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
       }
     }
-
-
-  } on FirebaseAuthException catch (e) {
-      String message = _getFirebaseAuthErrorMessage(e.code);
-      if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message)),
-          );
-      }
   } catch (e) {
-    if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('فشل تسجيل الدخول عبر Google: ${e.toString()}')),
-        );
-    }
+    _handleSocialLoginError(e, 'Google');
   } finally {
     setState(() => _isLoading = false);
   }
 }
 
 // =========================================================================
-// 6. Facebook Logic (تم التعديل)
+// 7. Facebook Logic (تم التعديل)
 // =========================================================================
 Future<void> _signInWithFacebook() async {
   setState(() => _isFacebookLoading = true);
 
   try {
+    // ⚠️ يفضل التأكد من تسجيل الخروج قبل المحاولة
     await FacebookAuth.instance.logOut(); 
 
     final LoginResult result = await FacebookAuth.instance.login(
@@ -271,9 +272,8 @@ Future<void> _signInWithFacebook() async {
         if (idToken != null) {
             final SharedPreferences prefs = await SharedPreferences.getInstance();
             await prefs.setString('user_token', idToken); 
-            print("✅ تم حفظ التوكن (Facebook) في SharedPreferences بنجاح.");
+            log("✅ تم حفظ التوكن (Facebook) في SharedPreferences بنجاح.", name: 'AUTH_SUCCESS');
             await prefs.setBool('data_completed', false); 
-            print("✅ تم حفظ التوكن وحالة البيانات (غير مكتملة) .");
         }
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -291,50 +291,32 @@ Future<void> _signInWithFacebook() async {
         }
 
         if (mounted) {
-          // ✅ التوجيه باستخدام اسم المسار الثابت
           Navigator.pushReplacementNamed(context, '/MemberDataEntryScreen');
         }
       }
     } else if (result.status == LoginStatus.cancelled) {
-        if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("تم إلغاء تسجيل الدخول عبر فيسبوك")),
-            );
-        }
+        // يتم التعامل مع الإلغاء كـ "خطأ" لكي تظهر رسالة للمستخدم
+        _handleSocialLoginError( FirebaseAuthException(code: 'cancelled', message: 'User cancelled Facebook sign-in'), 'Facebook');
     } else {
-        if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("فشل تسجيل الدخول عبر فيسبوك: ${result.message}")),
-            );
-        }
+        // أي فشل آخر في عملية تسجيل الدخول عبر الفيسبوك نفسه
+        _handleSocialLoginError(Exception("Facebook Login Failed: ${result.message}"), 'Facebook');
     }
-  } on FirebaseAuthException catch (e) {
-      String message = _getFirebaseAuthErrorMessage(e.code);
-      if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message)),
-          );
-      }
   } catch (e) {
-    if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("خطأ غير متوقع أثناء تسجيل الدخول عبر فيسبوك: ${e.toString()}")),
-        );
-    }
+    _handleSocialLoginError(e, 'Facebook');
   } finally {
     setState(() => _isFacebookLoading = false);
   }
 }
 
 // =========================================================================
-// 7. Sign Up Function (تم التعديل)
+// 8. Sign Up Function (تم التعديل)
 // =========================================================================
 Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() {
-        _errorMessage = 'كلمتا المرور غير متطابقتين.'; // ⚠️ هنا سنستخدم _errorMessage لتحديث UI
+        _errorMessage = 'كلمتا المرور غير متطابقتين.'; 
       });
       return;
     }
@@ -343,7 +325,7 @@ Future<void> _signUp() async {
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null; // إعادة تعيين رسالة الخطأ
+      _errorMessage = null; 
     });
 
     try {
@@ -377,12 +359,14 @@ Future<void> _signUp() async {
       
     } on FirebaseAuthException catch (e) {
         String message = _getFirebaseAuthErrorMessage(e.code);
+        log('❌ خطأ Firebase حقيقي في التسجيل: ${e.toString()}', name: 'EMAIL_AUTH_ERROR');
         if (mounted) {
              ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(message)),
             );
         }
     } catch (e) {
+      log('❌ خطأ غير متوقع في التسجيل: ${e.toString()}', name: 'EMAIL_AUTH_ERROR');
       if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('خطأ غير متوقع: ${e.toString()}')),
@@ -397,7 +381,7 @@ Future<void> _signUp() async {
 
 
 // =========================================================================
-// 8. Build Method (UI) - تم إزالة منطق عرض _errorMessage من النص
+// 9. Build Method (UI) - تم إزالة منطق عرض _errorMessage من النص
 // =========================================================================
   @override
   Widget build(BuildContext context) {
@@ -685,7 +669,7 @@ Future<void> _signUp() async {
 
 
 // =========================================================================
-// 9. Widget Helpers
+// 10. Widget Helpers
 // =========================================================================
 
   // Sign Up Button Widget 

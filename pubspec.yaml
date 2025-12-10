@@ -44,7 +44,7 @@ dependencies:
   dotted_dashed_line: ^0.0.3
   firebase_analytics_web: ^0.6.0+3
   firebase_auth: ^6.1.1
-  firebase_auth_web: ^6.0.4
+  firebase_auth_web: ^6.1.0
   firebase_core: ^4.2.0
   firebase_core_web: ^3.2.0
   firebase_messaging: ^16.0.3
@@ -52,9 +52,11 @@ dependencies:
   firebase_storage: ^13.0.3
   firebase_storage_web: ^3.10.21
   fl_chart: ^1.1.1
+
+  
   flutter:
     sdk: flutter
-  flutter_facebook_auth: 6.0.4
+  flutter_facebook_auth: ^6.0.4
 
   flutter_html: ^3.0.0
   flutter_native_splash: ^2.3.1
@@ -96,7 +98,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 # pubspec.yaml
-# ...
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
@@ -111,7 +112,7 @@ flutter_launcher_icons:
     generate: true
     image_path: "assets/images/app_icon.png" # 👈 و مسار الـ windows
     icon_size: 48
-  
+
 flutter_native_splash:
   color: "#ffffff"
   color_dark: "#010101"

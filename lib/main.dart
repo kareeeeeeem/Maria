@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // 🆕 إضافة Supabase
+import 'package:supabase_flutter/supabase_flutter.dart'; 
 
 import 'package:churchapp/routes.dart'; 
 import 'package:firebase_core/firebase_core.dart';
@@ -27,10 +27,10 @@ final notificationsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
 
 
 // =========================================================================
-// 🔔 دالة تهيئة OneSignal
+// 🔔 دالة تهيئة OneSignal (كما هي)
 // =========================================================================
 Future<void> _initializeOneSignal() async {
-// ... (بقية منطق OneSignal يبقى كما هو)
+  // ... (منطق OneSignal السابق يبقى كما هو)
   if (kIsWeb) {
     print("🔔 OneSignal initialization skipped on Web platform.");
     return;
@@ -98,7 +98,7 @@ Future<void> _initializeOneSignal() async {
 }
 
 // =========================================================================
-// 🏁 الدالة الرئيسية main
+// 🏁 الدالة الرئيسية main - تم تحسين منطق التوجيه
 // =========================================================================
 String initialRoute = '/';
 
@@ -120,22 +120,28 @@ Future<void> main() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   final String? userToken = prefs.getString('user_token');
   
-  final bool? dataCompleted = prefs.getBool('data_completed'); 
-print("حالة التوكن: ${userToken != null ? 'موجود' : 'غير موجود'}");
-print("حالة اكتمال البيانات: $dataCompleted");
+  // 🎯 القراءة مع قيمة افتراضية: إذا لم يتم تعيين data_completed من قبل، افترض أنها false
+  final bool dataCompleted = prefs.getBool('data_completed') ?? false; 
+  
+  // ----------------------------------------------------
+  // طباعة الحالة الحالية في Console
+  // ----------------------------------------------------
+  print("حالة التوكن: ${userToken != null && userToken.isNotEmpty ? 'موجود' : 'غير موجود'}");
+  print("حالة اكتمال البيانات (القيمة المخزنة): $dataCompleted");
+  // ----------------------------------------------------
 
-  if (userToken != null && userToken.isNotEmpty) {
-  // المستخدم مسجل دخوله (لديه توكن)
-  if (dataCompleted == true) {
+if (userToken != null && userToken.isNotEmpty) {
+  // المستخدم مسجل دخوله (لديه توكن صالح)
+  if (dataCompleted) {
     // 1. التوكن موجود والبيانات مكتملة: اذهب إلى الصفحة الرئيسية
     initialRoute = '/HomePage'; 
   } else {
-    // 2. التوكن موجود لكن البيانات غير مكتملة (أو المفتاح غير موجود): اذهب لجمع البيانات
+    // 2. التوكن موجود لكن البيانات غير مكتملة: اذهب لجمع البيانات
     initialRoute = MemberDataEntryScreen.routeName; // /MemberDataEntryScreen
   }
 } else {
-  // 3. لا يوجد توكن: اذهب إلى صفحة تسجيل الدخول / Sign Up
-  initialRoute = '/'; // (الذي يوجه إلى UserSignUpScreen أو LoginScreen)
+  // 3. لا يوجد توكن: اذهب إلى شاشة تسجيل الدخول.
+  initialRoute = '/StartScreen'; // ⬅️ المسار الافتراضي عند عدم وجود مستخدم
 }
 
   runApp(const MyApp());

@@ -117,8 +117,8 @@ class _MemberDataEntryScreenState extends State<MemberDataEntryScreen> {
     if (user == null) {
       // إذا لم يكن هناك مستخدم، عد إلى شاشة التسجيل
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // افتراض وجود شاشة تسجيل /login
-        Navigator.of(context).pushReplacementNamed('/login'); 
+        // افتراض وجود شاشة تسجيل /user_login
+        Navigator.of(context).pushReplacementNamed('/user_login'); 
       });
     } else {
       // 🆕 تهيئة وحدة تحكم الاسم باستخدام اسم العرض الحالي (إذا وُجد)
@@ -272,8 +272,8 @@ class _MemberDataEntryScreenState extends State<MemberDataEntryScreen> {
 
       // 3. التوجيه إلى الشاشة الرئيسية (Home)
       if (mounted) {
-        // افتراض وجود شاشة رئيسية /home
-        Navigator.pushReplacementNamed(context, '/home'); 
+        // افتراض وجود شاشة رئيسية /HomePage
+        Navigator.pushReplacementNamed(context, '/HomePage'); 
       }
     } on PlatformException catch (e) {
       setState(() {

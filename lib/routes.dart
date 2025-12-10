@@ -2,6 +2,7 @@
 import 'package:churchapp/aus/login/login_screen.dart';
 import 'package:churchapp/aus/signup/signup_screen.dart';
 import 'package:churchapp/screens/FeastsPage.dart';
+import 'package:churchapp/screens/HomePage.dart';
 import 'package:churchapp/screens/bible/bible_page.dart';
 import 'package:churchapp/screens/ChurchStore.dart';
 import 'package:churchapp/screens/libraryPage.dart';
@@ -13,15 +14,11 @@ import 'package:churchapp/screens/SundaySchoolManagement.dart';
 import 'package:churchapp/screens/VisitationAndShepherding.dart';
 import 'package:churchapp/screens/activities_page.dart';
 import 'package:churchapp/screens/admin_page.dart';
-import 'package:churchapp/screens/church_info_page.dart';
-import 'package:churchapp/screens/donation_page.dart';
-import 'package:churchapp/screens/HomePage.dart';
 import 'package:churchapp/screens/kareemEmda.dart';
 import 'package:churchapp/screens/masses_page.dart';
 import 'package:churchapp/screens/meetings_page.dart';
 import 'package:churchapp/screens/notification/notification_screen.dart';
 import 'package:churchapp/screens/notification/sendNotifiactions.dart';
-import 'package:churchapp/screens/settings_page.dart';
 import 'package:churchapp/screens/Requests/visitation_page.dart';
 import 'package:churchapp/welcome/on_boarding/start_screen.dart';
 import 'package:churchapp/welcome/on_boarding/on_boarding_screen.dart';
@@ -37,7 +34,6 @@ final Map<String, WidgetBuilder> routes = {
         '/user_login': (context) => const UserLoginScreen(), 
 
         '/HomePage': (context) => const HomePage(), 
-        '/home': (context) => const HomePage(), 
 
         '/bible': (context) => BibleFeaturePage(),
         // '/agpeya': (context) => const AgpeyaFeaturePage(),
@@ -55,8 +51,6 @@ final Map<String, WidgetBuilder> routes = {
         '/admin': (context) => const AdminPage(), 
         '/OnBoardingScreen': (context) => const OnBoardingScreen(), 
         '/WelcomeScreen': (context) => const WelcomeScreen(), 
-        '/UserLoginScreen': (context) => const UserLoginScreen(), 
-        '/UserSignUpScreen': (context) => const UserSignUpScreen(), 
         '/ProfileSkeleton': (context) => const ProfileSkeleton(), 
         
         '/NotificationsPage': (context) => const NotificationsPage(), 
