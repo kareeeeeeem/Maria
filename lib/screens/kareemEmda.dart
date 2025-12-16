@@ -246,7 +246,7 @@ Future<DeveloperProfile?> _fetchProfile() async {
   
           {"label": "Email", "icon": "✉️", "value": profile.email, "link": "mailto:${profile.email}"},
           {"label": "LinkedIn", "icon": "🔗", "value": "Open Profile", "link": profile.linkedin},
-          {"label": "GitHub", "icon": "⚙️", "value": "View Repos", "link": profile.github},
+         // {"label": "GitHub", "icon": "⚙️", "value": "View Repos", "link": profile.github},
       ];
       
       _slideAnimations = List.generate(

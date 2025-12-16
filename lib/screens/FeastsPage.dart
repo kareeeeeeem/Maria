@@ -134,11 +134,11 @@ class _FeastCard extends StatelessWidget {
 
   // دالة مساعدة لتحديد الأيقونة بناءً على نوع العيد
   IconData _getFeastIcon(String title) {
-    if (title.contains('عيد القيامة')) return Icons.celebration;
-    if (title.contains('ميلاد')) return Icons.star;
-    if (title.contains('صوم')) return Icons.calendar_today;
+    if (title.contains('عيد القيامة')) return Icons.church_outlined;
+    if (title.contains('ميلاد')) return Icons.church_outlined;
+    if (title.contains('صوم')) return Icons.church_outlined;
     if (title.contains('الغطاس') || title.contains('قانا')) return Icons.water;
-    if (title.contains('الصليب')) return Icons.cruelty_free_outlined; 
+    if (title.contains('الصليب')) return Icons.church_outlined; 
     if (title.contains('السيدة العذراء')) return Icons.church_outlined; 
     if (title.contains('الصعود') || title.contains('حلول الروح القدس')) return Icons.cloud_queue; 
     return Icons.event_note;

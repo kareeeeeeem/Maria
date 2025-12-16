@@ -62,7 +62,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     switch (errorCode) {
       // الأخطاء المتعلقة ببيانات الاعتماد والمستخدم
       case 'account-exists-with-different-credential':
-        return 'يوجد حساب مرتبط بنفس البريد الإلكتروني. يرجى تسجيل الدخول بالطريقة الأخرى لربط حسابك.'; 
+        return 'يوجد حساب مرتبط بنفس البريد الإلكتروني. يرجى تسجيل الدخول بالطريقة الأخرى الاولي التي سجلت بها لربط حسابك.'; 
       case 'weak-password':
         return 'كلمة المرور ضعيفة جدًا. يرجى اختيار كلمة مرور أقوى.';
       case 'email-already-in-use':
@@ -707,32 +707,32 @@ Stack(
     ),
     
     // 2. الشارة / التاج (التي تشير إلى التوصية)
-    Positioned(
-      top: -10, // ارتفاع الشارة فوق الزر
-      left: 10, // إزاحتها لليسار (باتجاه الأعلى اليسار)
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.amber, // لون جذاب ومميز
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 3,
-              offset: const Offset(1, 1),
-            ),
-          ],
-        ),
-        child: const Text(
-          'يفضل', // أو "موصى به" أو "الأكثر شيوعاً"
-          style: TextStyle(
-            color: Colors.black, // نص غامق على خلفية فاتحة
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    ),
+    // Positioned(
+    //   top: -10, // ارتفاع الشارة فوق الزر
+    //   left: 10, // إزاحتها لليسار (باتجاه الأعلى اليسار)
+    //   child: Container(
+    //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    //     decoration: BoxDecoration(
+    //       color: Colors.amber, // لون جذاب ومميز
+    //       borderRadius: BorderRadius.circular(15),
+    //       boxShadow: [
+    //         BoxShadow(
+    //           color: Colors.black.withOpacity(0.3),
+    //           blurRadius: 3,
+    //           offset: const Offset(1, 1),
+    //         ),
+    //       ],
+    //     ),
+    //     // child: const Text(
+    //     //   'يفضل', // أو "موصى به" أو "الأكثر شيوعاً"
+    //     //   style: TextStyle(
+    //     //     color: Colors.black, // نص غامق على خلفية فاتحة
+    //     //     fontSize: 12,
+    //     //     fontWeight: FontWeight.bold,
+    //     //   ),
+    //     // ),
+    //   ),
+    // ),
   ],
 ),
 // 💡 نهاية الجزء المحدث

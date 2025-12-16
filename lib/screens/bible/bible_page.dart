@@ -312,7 +312,7 @@ class BibleBooksPage extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3, 
-            childAspectRatio: 2.2, // نسبة عرض/ارتفاع البطاقة
+            childAspectRatio: 1.2, // نسبة عرض/ارتفاع البطاقة
             crossAxisSpacing: 15,
             mainAxisSpacing: 15,
           ),

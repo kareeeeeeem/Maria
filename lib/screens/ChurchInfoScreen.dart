@@ -2,20 +2,17 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 //========================================================================
-// 1. App Colors & Data Structure (محدث)
+// 1. App Colors & Data Structure
 //========================================================================
 
 class AppColors {
-  // الألوان التي أرسلتها
   static const Color primaryBlue = Color(0xFF4E342E); // البني الداكن
   static const Color secondaryGold = Color(0xFFFFF8E1); // الذهبي الفاتح
   static const Color backgroundColor = Color(0xFFF5F5F5); 
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
-  static const Color alertRed = Color(0xFFE53935);
   
-  // ألوان إضافية للدعم
   static const Color primaryDark = primaryBlue;       
   static const Color accentColor = secondaryGold;     
   static const Color primaryColor1 = primaryBlue;     
@@ -29,7 +26,6 @@ class ChurchData {
   final String description;
   final IconData icon;
   final Color color;
-  final String founder;            
   
   ChurchData({
     required this.name,
@@ -37,12 +33,19 @@ class ChurchData {
     required this.description,
     required this.icon,
     required this.color,
-    required this.founder,
   });
 }
 
-// البيانات المجمعة للكنيستين (مع تصحيح أيقونة العذراء)
+// الترتيب: العذراء مريم أولاً
 final List<ChurchData> churches = [
+    ChurchData(
+    name: 'كنيسة السيدة العذراء مريم ببنها',
+    address: 'سعد زغلول، قسم بنها، بنها',
+    description:
+        'هي الكنيسة الأم والأقدم في بنها، وهي مركز روحي له تاريخ طويل يمتد لعدة قرون. تقع في قلب المدينة وتعتبر مزاراً مهماً لكل الأقباط. سُميت باسم القديسة العذراء، والدة الإله، وتحتوي على أيقونات تاريخية نادرة. بالإضافة إلى القداسات المنتظمة، تشتهر الكنيسة بخدمة افتقاد متكاملة، ودورها الحيوي في رعاية الشباب والأنشطة الكشفية. تقام بها صلوات التمجيد الخاصة بالعذراء كل شهر في كيهك، مما يجعلها مركزاً حقيقياً للإيمان والخدمة في بنها.',
+    icon: Icons.church, // تم تصحيح الأيقونة
+    color: AppColors.secondaryGold.withOpacity(0.8),
+  ),
   ChurchData(
     name: 'كنيسة القديس نيقولاوس ببنها',
     address: 'الشهيد عادل إبراهيم أبو سينا، قسم بنها، بنها',
@@ -50,19 +53,9 @@ final List<ChurchData> churches = [
         'تُعد كنيسة القديس نيقولاوس (مارنيقولا) في بنها منارة روحية وتاريخية في الإيبارشية. تأسست كمركز عبادة لخدمة الأسر القبطية في المنطقة، وتحمل اسم شفيع البحارة والمسافرين. تتميز الكنيسة بقداساتها الدورية، بالإضافة إلى اجتماعات دراسة الكتاب المقدس والخدمات الاجتماعية النشطة التي تخدم شريحة واسعة من المجتمع. تشتهر الكنيسة بتصميمها المعماري الذي يمزج بين العمارة القبطية التقليدية والعناصر الحديثة، مما يجعلها مكاناً مثالياً للصلاة والتأمل. كما تقام فيها احتفالات سنوية كبرى بعيد القديس نيقولاوس في ديسمبر.',
     icon: Icons.church,
     color: AppColors.secondaryGold,
-    founder: 'تم تجديدها وتوسيعها في منتصف القرن العشرين.', 
   ),
-  ChurchData(
-    name: 'كنيسة السيدة العذراء مريم ببنها',
-    address: 'سعد زغلول، قسم بنها، بنها',
-    description:
-        'هي الكنيسة الأم والأقدم في بنها، وهي مركز روحي له تاريخ طويل يمتد لعدة قرون. تقع في قلب المدينة وتعتبر مزاراً مهماً لكل الأقباط. سُميت باسم القديسة العذراء، والدة الإله، وتحتوي على أيقونات تاريخية نادرة. بالإضافة إلى القداسات المنتظمة، تشتهر الكنيسة بخدمة افتقاد متكاملة، ودورها الحيوي في رعاية الشباب والأنشطة الكشفية. تقام بها صلوات التمجيد الخاصة بالعذراء كل شهر في كيهك، مما يجعلها مركزاً حقيقياً للإيمان والخدمة في بنها.',
-    icon: Icons.brightness_high, // تم تصحيح الأيقونة
-    color: AppColors.secondaryGold.withOpacity(0.8),
-    founder: 'يرجع تاريخها للقرن التاسع عشر وتعتبر أقدم كنيسة بالمدينة.',
-  ),
+  
 ];
-
 
 //========================================================================
 // 2. شاشة معلومات الكنائس (ChurchInfoScreen)
@@ -77,10 +70,9 @@ class ChurchInfoScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
       appBar: AppBar(
-        title: const Text('معلومات عن كنائس بنها', style: TextStyle(color: AppColors.whiteColor, fontWeight: FontWeight.bold)),
+        title: const Text('عن كنائسنا وآبائنا', style: TextStyle(color: AppColors.whiteColor, fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primaryDark,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.whiteColor),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -88,19 +80,55 @@ class ChurchInfoScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-             
-            
-            // بناء بطاقة لكل كنيسة
+            // 1. بطاقات الكنائس
             ...churches.map((church) => _buildChurchCard(context, church)).toList(),
             
             const SizedBox(height: 30),
             
-            // 🔄 الترتيب الجديد: سيرة السيدة العذراء أولاً
+            // 2. سيرة السيدة العذراء (نص كامل ومنسق)
             _buildVirginMarySection(),
             
-            // سيرة القديس نيقولاوس ثانياً
+            const SizedBox(height: 20),
+
+            // 3. آباء كنيسة العذراء المتنيحين
+            _buildDepartedSection(
+              title: '🕊️ بركة آباء كنيسة العذراء 🕊️',
+              fathers: [
+                _FatherInfo('المتنيح الأنبا مكسيموس القديس', 'مطران بنها وقويسنا (1963-1992). رجل الصلاة والزهد والوداعة الذي أحبه الجميع.'),
+                _FatherInfo('القمص المتنيح قزمان', 'من  آباء الكنيسة الأجلاء، تميز بالحكمة والوقار والخدمة الباذلة.'),
+                _FatherInfo('القمص المتنيح دميان', 'أب الاعتراف الحنون وخادم الهيكل الأمين الذي تتلمذ على يديه الكثيرون.'),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+            const Divider(color: AppColors.accentColor, thickness: 1),
+            const SizedBox(height: 20),
+
+            // 4. سيرة القديس نيقولاوس
             _buildSaintNicholasSection(),
+
+            const SizedBox(height: 20),
+
+            // 5. آباء كنيسة القديس نيقولاوس (أبونا صلبامون المالح)
+           // 5. آباء كنيسة القديس نيقولاوس (القمص صرابامون سيدهم)
+_buildDepartedSection(
+  title: '🕊️ بركة آباء كنيسة القديس نيقولاوس 🕊️',
+  fathers: [
+    _FatherInfo(
+      'أبونا المتنيح طيب الذكر القمص صرابامون سيدهم', 
+      '''• ملاك كنيسة القديس نيقولاوس ببنها.
+• وُلد في يوم السبت الموافق ٢٦ / ٤ / ١٩٥٢م.
+• تربى وخدم بكنيسة السيدة العذراء مريم - ش. أحمد عصمت بالقاهرة، وكان مسئولاً عن خدمة اجتماع الشباب بالكنيسة.
+• حصل على بكالوريوس هندسة تكنولوجيا بجامعة بنها عام ١٩٧٧م.
+• نال نعمة الكهنوت بيد المتنيح الأنبا مكسيموس مطران القليوبية ومركز قويسنا، يوم الجمعة الموافق ٦ / ٣ / ١٩٨٧م.
+• نال نعمة القمصية بيد الأنبا مكسيموس أسقف بنها وقويسنا (آنذاك)، يوم الجمعة الموافق ٥ / ٣ / ٢٠٠٤م.
+• اتصف بالبساطة، وحفظه للترانيم الروحية، وصوته الشجي المريح في إلقائه للترانيم، وشرحه المبسط للكتاب المقدس.
+• تنيح بسلام يوم الأحد الموافق ٢ / ١١ / ٢٠٢٥م عن عمر يناهز ٧٣ عاماً بعد خدمة كهنوتية امتدت حوالي ٣٩ عاماً، لينطفئ عمود منير على الأرض ويذهب ليضيء في سماء الأبرار ويشفع فينا أمام عرش النعمة.''',
+    ),
+  ],
+),
             
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -108,220 +136,131 @@ class ChurchInfoScreen extends StatelessWidget {
   }
 
   //========================================================================
-  // 3. مكونات الشاشة (Widgets)
+  // 3. مكونات الواجهة (Widgets)
   //========================================================================
 
   Widget _buildChurchCard(BuildContext context, ChurchData church) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 25.0),
+      padding: const EdgeInsets.only(bottom: 20.0),
       child: Container(
         padding: const EdgeInsets.all(20.0),
         decoration: BoxDecoration(
           color: AppColors.fieldFillColor.withOpacity(0.9), 
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: church.color, width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: church.color.withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          border: Border.all(color: church.color, width: 2),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(church.icon, color: church.color, size: 30),
+                Text(church.name, style: TextStyle(color: church.color, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    church.name,
-                    style: TextStyle(
-                      color: church.color,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                Icon(church.icon, color: church.color),
               ],
             ),
-            const Divider(color: AppColors.whiteColor, height: 25),
-            
-            // الوصف
-            Text(
-              church.description,
-              style: const TextStyle(
-                color: AppColors.whiteColor,
-                fontSize: 16,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.justify,
-            ),
-            const SizedBox(height: 15),
-
-            // العنوان
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.location_on, color: AppColors.whiteColor, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    church.address,
-                    style: TextStyle(
-                      color: AppColors.whiteColor.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            const Divider(color: Colors.white24, height: 20),
+            Text(church.description, textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
           ],
         ),
       ),
     );
   }
 
-  // الدالة المساعدة _buildDetailSection لم تعد مستخدمة في بطاقة الكنيسة، لكن تم الحفاظ عليها للاستخدام في سير القديسين.
-  Widget _buildDetailSection(IconData icon, String title, String value, Color accentColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: accentColor, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: TextStyle(
-                  color: accentColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 26.0, top: 4.0),
-          child: Text(
-            value,
-            style: const TextStyle(
-                color: AppColors.whiteColor, 
-                fontSize: 14, 
-                height: 1.4),
-          ),
-        ),
+  Widget _buildVirginMarySection() {
+    return _buildBaseStorySection(
+      title: '👑 سيرة السيدة العذراء مريم 👑',
+      content: '''
+١. الميلاد: ولدت في الناصرة من يواقيم وحنة بعد صلاة وإيمان.
+٢. الهيكل: تكرست للخدمة في الهيكل وهي ابنة ثلاث سنوات.
+٣. البشارة: بشرها الملاك جبرائيل بحملها بمخلص العالم.
+٤. الصمت والعمق: كانت تحفظ كل الأمور متفكرة بها في قلبها.
+٥. عند الصليب: صمدت تحت آلام ابنها وصارت أماً لكل المؤمنين.
+٦. الصعود: تنيحت في ٢١ طوبة وأعلن الرب عن صعود جسدها في ١٦ مسرى.
+      ''',
+      details: [
+        {'icon': Icons.face, 'label': 'اللقب:', 'value': 'ثيؤطوكوس (والدة الإله)'},
+        {'icon': Icons.star, 'label': 'الرمز:', 'value': 'العليقة وتابوت العهد'},
       ],
     );
   }
 
-
-  
-  // دالة لسيرة السيدة العذراء مريم
-  Widget _buildVirginMarySection() {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      margin: const EdgeInsets.only(bottom: 30), // ⚠️ تم تغيير الهامش السفلي ليسبق نيقولاوس
-      decoration: BoxDecoration(
-        color: AppColors.primaryColor1.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: AppColors.accentColor, width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            '👑 سيرة السيدة العذراء مريم 👑',
-            style: TextStyle(
-              color: AppColors.accentColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'السيدة العذراء مريم، والدة الإله، هي أعظم القديسات وأكرم من الكاروبيم والسيرابيم. وُلدت من القديسين يواقيم وحنة، وخدمت في الهيكل منذ طفولتها. باختيار إلهي فريد، صارت العروس الطاهرة التي حملت المسيح، كلمة الله المتجسد، لخلاص العالم. عاشت العذراء حياة ملؤها الطاعة والاتكال والصمت والتأمل. يكرّمها الأقباط في شهر كيهك ويصومون صومها الشهير. هي دائمة الشفاعة لأجل البشرية.',
-            style: const TextStyle(
-                color: AppColors.whiteColor, 
-                fontSize: 15, 
-                height: 1.6,
-                fontStyle: FontStyle.italic
-            ),
-            textAlign: TextAlign.justify,
-          ),
-          const Divider(color: AppColors.accentColor, height: 20),
-          _buildDetailRow(Icons.face, 'أشهر ألقابها:', 'والدة الإله (ثيؤطوكوس)، العذراء الطاهرة.', AppColors.whiteColor),
-          _buildDetailRow(Icons.favorite, 'عيد النياحة:', '21 طوبة (يناير)، وهو يوم صعود جسدها للسماء.', AppColors.whiteColor),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSaintNicholasSection() {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      // ⚠️ تم حذف الهامش العلوي لأنه الآن يتبع قسم العذراء مباشرة
-      decoration: BoxDecoration(
-        color: AppColors.primaryColor1.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: AppColors.accentColor, width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            '🌟 سيرة القديس نيقولاوس أسقف ميرة (مارنيقولا) 🌟',
-            style: TextStyle(
-              color: AppColors.accentColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'القديس نيقولاوس أسقف ميرة، المعروف بـ "سانتا كلوز" الحديث، هو قديس عظيم من القرن الرابع الميلادي. وُلد في آسيا الصغرى (تركيا حالياً) واشتهر بكرمه السري وعمله للعجائب. أهم القصص عنه هي إنقاذه لثلاث فتيات فقيرات من الزواج القسري عن طريق إلقاء أكياس من الذهب لهن في الليل. كان مدافعاً قوياً عن الإيمان الأرثوذكسي وحضر مجمع نيقية. تذكار نياحته هو 6 ديسمبر.',
-            style: TextStyle(
-                color: AppColors.whiteColor, 
-                fontSize: 15, 
-                height: 1.6,
-                fontStyle: FontStyle.italic
-            ),
-            textAlign: TextAlign.justify,
-          ),
-          const Divider(color: AppColors.accentColor, height: 20),
-          
-          _buildDetailRow(Icons.calendar_month, 'تاريخ النياحة:', '6 ديسمبر 343 م', AppColors.whiteColor),
-          _buildDetailRow(Icons.local_library, 'أشهر قصة:', 'إنقاذه لبنات الرجل الفقير (أصل بابا نويل).', AppColors.whiteColor),
-          _buildDetailRow(Icons.directions_boat, 'شفيع:', 'البحارة والمسافرين والأطفال.', AppColors.whiteColor),
-        ],
+    return _buildBaseStorySection(
+      title: '🌟 سيرة القديس نيقولاوس 🌟',
+      content: 'أسقف ميرة صانع العجائب من القرن الرابع. اشتهر بعطائه السري وحبه للفقراء وهو الأصل التاريخي لشخصية بابا نويل. كان مدافعاً غيوراً عن الإيمان المستقيم في مجمع نيقية.',
+      details: [
+        {'icon': Icons.calendar_today, 'label': 'التذكار:', 'value': '٦ ديسمبر (كيهك)'},
+        {'icon': Icons.anchor, 'label': 'شفيع:', 'value': 'البحارة والمسافرين'},
+      ],
+    );
+  }
+
+  Widget _buildBaseStorySection({required String title, required String content, required List<Map<String, dynamic>> details}) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.primaryColor1.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.accentColor.withOpacity(0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Text(title, style: const TextStyle(color: AppColors.accentColor, fontWeight: FontWeight.bold, fontSize: 17))),
+            const SizedBox(height: 10),
+            Text(content, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.6)),
+            const Divider(color: Colors.white24),
+            ...details.map((d) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(d['icon'], color: AppColors.accentColor, size: 16),
+                  const SizedBox(width: 8),
+                  Text('${d['label']} ${d['value']}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                ],
+              ),
+            )).toList(),
+          ],
+        ),
       ),
     );
   }
-  Widget _buildDetailRow(IconData icon, String title, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppColors.accentColor, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(color: AppColors.accentColor, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: color, fontSize: 14),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
+
+  Widget _buildDepartedSection({required String title, required List<_FatherInfo> fathers}) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(title, style: const TextStyle(color: AppColors.accentColor, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            ...fathers.map((f) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(f.name, style: const TextStyle(color: AppColors.accentColor, fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text(f.bio, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                ],
+              ),
+            )).toList(),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _FatherInfo {
+  final String name;
+  final String bio;
+  _FatherInfo(this.name, this.bio);
 }

@@ -356,7 +356,11 @@ class _StartScreenState extends State<StartScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 40.0, vertical: 30),
                     child: GestureDetector(
-                      onTap: _showSecretCodeDialog, 
+                     // onTap: _showSecretCodeDialog, 
+
+
+                      onTap: _navigateToOnBoarding,
+
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 400),
                         height: 55,

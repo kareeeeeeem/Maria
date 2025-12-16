@@ -663,7 +663,6 @@ class _ScheduleList extends StatelessWidget {
               fontSize: 22,
               fontWeight: FontWeight.w900,
               color: sectionColor,
-              decoration: TextDecoration.underline,
               decorationColor: AppColors.accentGold.withOpacity(0.7),
               decorationThickness: 2,
             ),
