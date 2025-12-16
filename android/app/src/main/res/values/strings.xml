@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">Maria</string>
-    <string name="facebook_app_id">1548675189494895</string>
-    <string name="facebook_client_token">b624a33ed2f62b7358a32e675e1cea2c</string>
-    <string name="fb_login_protocol_scheme">fb24770887475900030</string>
+    
+    <string name="facebook_app_id">25517143104587346</string>
+    
+    <string name="facebook_client_token">21bfe064c40831fdde1106f2d73bbbbb</string>
+    
+    <string name="fb_login_protocol_scheme">fb1548675189494895</string>
 </resources>

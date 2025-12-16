@@ -72,13 +72,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       final loadedList = List<Map<String, dynamic>>.from(jsonDecode(data) as List<dynamic>);
       
       notificationsNotifier.value = loadedList.map((n) {
-        if (n is Map<String, dynamic>) {
-          return {
-            ...n,
-            'isRead': n.containsKey('isRead') ? n['isRead'] : false, 
-          };
-        }
-        return null;
+        return {
+          ...n,
+          'isRead': n.containsKey('isRead') ? n['isRead'] : false, 
+        };
+              return null;
       }).where((n) => n != null).cast<Map<String, dynamic>>().toList();
       
       _notifications = notificationsNotifier.value;

@@ -16,7 +16,7 @@ class SupabaseService {
     for (int i = 0; i < totalFiles; i++) {
         final file = files[i];
         final fileExtension = file.name.split('.').last;
-        final fileName = 'news_media/${DateTime.now().millisecondsSinceEpoch}_$i.${fileExtension}';
+        final fileName = 'news_media/${DateTime.now().millisecondsSinceEpoch}_$i.$fileExtension';
 
         try {
             // 1. تنفيذ عملية الرفع (بدون onUploadProgress)

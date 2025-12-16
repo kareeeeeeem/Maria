@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'package:flutter/material.dart';
-// Firebase Imports (Assume these are available in pubspec.yaml)
+// Firebase Imports
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -9,24 +9,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // II. كلاس الثوابت والألوان (AppColors)
 // =========================================================
 class AppColors {
-  // ألوان جديدة تليق بالتصميم الكنسي
   static const Color primaryMaroon = Color(0xFF4E342E); // ماروني عميق / عنابي
   static const Color accentGold = Color(0xFFE6C47A); // ذهبي مطفأ / عتيق
   static const Color primaryDarkBlue = Color(0xFF37474F); // لون بديل للعشيات (Dark Slate)
-  
-  // ✅ تم إضافة البيج وتطبيقه على الخلفية
   static const Color backgroundBeige = Color(0xFFFFF8F0); 
   static const Color cardColor = Colors.white;
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
+  static const Color alertRed = Color(0xFFC62828); // للخطأ/الحذف
 }
 
 // =========================================================
-// I. كلاس نموذج البيانات (MassesSchedule) - مع الفرز الدقيق
+// I. كلاس نموذج البيانات (MassesSchedule) - مع إضافة churchName
 // =========================================================
 class MassesSchedule {
   final String id;
   final String type; // 'Mass' أو 'Vesper'
+  final String churchName; // 🆕 جديد: لتفريق المواعيد
   final String title;
   final String day;
   final String time;
@@ -35,6 +34,7 @@ class MassesSchedule {
   MassesSchedule({
     required this.id,
     required this.type,
+    required this.churchName, // 🆕
     required this.title,
     required this.day,
     required this.time,
@@ -45,11 +45,19 @@ class MassesSchedule {
     'الأحد': 1, 'الإثنين': 2, 'الثلاثاء': 3, 'الأربعاء': 4,
     'الخميس': 5, 'الجمعة': 6, 'السبت': 7, 'غير محدد': 8,
   };
+  
+  // دالة تحديد ترتيب العرض للكنائس (العذراء أولاً)
+  static int _getChurchOrder(String name) {
+    if (name.contains('العذراء') || name.contains('مريم')) return 1;
+    if (name.contains('القديس') || name.contains('نيقولاوس')) return 2;
+    return 3;
+  }
 
   factory MassesSchedule.fromMap(Map<String, dynamic> data, String id) {
     return MassesSchedule(
       id: id,
       type: data['type'] ?? '',
+      churchName: data['churchName'] ?? 'كنيسة العذراء مريم', // 🆕 قراءة اسم الكنيسة
       title: data['title'] ?? 'قداس/عشية',
       day: data['day'] ?? 'غير محدد',
       time: data['time'] ?? 'غير محدد',
@@ -60,6 +68,7 @@ class MassesSchedule {
   Map<String, dynamic> toMap() {
     return {
       'type': type,
+      'churchName': churchName, // 🆕 حفظ اسم الكنيسة
       'title': title,
       'day': day,
       'time': time,
@@ -90,17 +99,25 @@ class MassesSchedule {
     }
   }
   
-  // دالة فرز مخصصة مُحسنة: الفرز باليوم ثم بالوقت الفعلي
+  // دالة فرز مخصصة مُحسنة: الفرز بالكنيسة ثم باليوم ثم بالوقت الفعلي
   int compareTo(MassesSchedule other) {
+    // 1. الفرز حسب الكنيسة
+    final churchOrderA = _getChurchOrder(churchName);
+    final churchOrderB = _getChurchOrder(other.churchName);
+    
+    if (churchOrderA != churchOrderB) {
+      return churchOrderA.compareTo(churchOrderB);
+    }
+    
+    // 2. الفرز حسب اليوم
     final dayA = _dayOrder[day] ?? 9;
     final dayB = _dayOrder[other.day] ?? 9;
     
-    // 1. الفرز حسب اليوم
     if (dayA != dayB) {
       return dayA.compareTo(dayB);
     }
     
-    // 2. الفرز حسب الوقت الفعلي (باستخدام الدقائق المحللة)
+    // 3. الفرز حسب الوقت الفعلي
     final timeA = _parseTime(time);
     final timeB = _parseTime(other.time);
     
@@ -124,17 +141,16 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
   late FirebaseAuth _auth;
   String? _userId;
   bool _isLoading = true;
-  // هذا المتغير سيخزن النتيجة النهائية لـ (isAdmin OR IsRector...)
   bool _isAdminStatus = false; 
 
   List<MassesSchedule> _schedules = [];
   late TabController _tabController;
 
-  // هذا الـ Getter يستخدم النتيجة الموحدة للحقلين
   bool get _isAdmin => _userId != null && _isAdminStatus;
   
-  // مفتاح لنموذج الإضافة/التعديل
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>(); 
+  final List<String> _availableChurches = ['كنيسة العذراء مريم', 'كنيسة القديس نيقولاوس'];
+
 
   @override
   void initState() {
@@ -155,16 +171,13 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
       final doc = await _db.collection('users').doc(uid).get();
       final data = doc.data();
 
-      // 💡 التعديل هنا: نقرأ حالة الأدمن وحالة "الراعي"
       final bool isAdmin = data?['isAdmin'] ?? false;
       final bool isRector = data?['IsRectorofMassesandVespers'] ?? false; 
       
-      // نحدد ما إذا كان يمتلك أي صلاحية تعديل (Admin OR Rector)
       final bool canEdit = isAdmin || isRector; 
 
       if (mounted) {
         setState(() {
-          // نستخدم هذا المتغير لتحديد إمكانية التعديل
           _isAdminStatus = canEdit; 
         });
       }
@@ -190,6 +203,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
           } else {
             setState(() { _isAdminStatus = false; });
              try {
+               // تسجيل دخول مجهول للمستخدمين غير المصادق عليهم
                await _auth.signInAnonymously(); 
              } catch (e) {
                 print('Anonymous Auth Failed: $e');
@@ -219,6 +233,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
         return MassesSchedule.fromMap(data, doc.id);
       }).toList();
       
+      // الفرز حسب الكنيسة ثم اليوم ثم الوقت
       updatedSchedules.sort((a, b) => a.compareTo(b));
 
       if (mounted) {
@@ -239,7 +254,6 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
   }
 
   void _deleteSchedule(String id) async {
-    // التحقق من الصلاحية يعتمد الآن على _isAdmin الذي تم تحديث منطق الصلاحيات به
     if (!_isAdmin) return; 
     try {
       await _schedulesCollection.doc(id).delete();
@@ -258,9 +272,8 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
     }
   }
 
-  // دالة الإضافة/التعديل (تم تطبيق الألوان عليها)
+  // دالة الإضافة/التعديل - تم تحديثها لإضافة حقل اسم الكنيسة
   void _showScheduleForm({MassesSchedule? schedule}) {
-    // التحقق من الصلاحية يعتمد الآن على _isAdmin الذي تم تحديث منطق الصلاحيات به
     if (!_isAdmin) return;
     
     // القيم الأولية للنموذج
@@ -268,23 +281,22 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
     String currentDay = schedule?.day ?? 'الأحد';
     String currentTime = schedule?.time ?? '7:00 ص';
     String currentType = schedule?.type ?? 'Mass';
+    String currentChurchName = schedule?.churchName ?? _availableChurches.first; // 🆕
 
     final List<String> days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     final List<String> types = ['Mass', 'Vesper'];
 
+
     // دالة مساعدة لإنشاء حقول الإدخال بالألوان المطلوبة
-    Widget _buildStyledFormField({required Widget child}) {
+    Widget buildStyledFormField({required Widget child}) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 20.0), 
         child: Theme(
           data: Theme.of(context).copyWith(
-            // تحديد لون التمييز لحقول الإدخال
             colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.brown).copyWith(secondary: AppColors.primaryMaroon),
             inputDecorationTheme: const InputDecorationTheme(
               labelStyle: TextStyle(color: AppColors.textSecondary),
-              // توحيد شكل الحدود
               border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15)), borderSide: BorderSide(color: AppColors.primaryMaroon)),
-              // لون التركيز الماروني
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15)), borderSide: BorderSide(color: AppColors.primaryMaroon, width: 2)),
             ),
           ),
@@ -328,20 +340,39 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
                     Expanded(
                       child: ListView(
                         children: [
-                          _buildStyledFormField(
+                          // 🆕 حقل اختيار اسم الكنيسة
+                          buildStyledFormField(
+                            child: DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(labelText: 'اسم الكنيسة'),
+                              initialValue: currentChurchName,
+                              items: _availableChurches.map((String church) {
+                                return DropdownMenuItem<String>(
+                                  value: church,
+                                  child: Text(church, textAlign: TextAlign.right),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setModalState(() { currentChurchName = newValue; });
+                                }
+                              },
+                            ),
+                          ),
+                          
+                          buildStyledFormField(
                             child: TextFormField(
                               initialValue: currentTitle,
                               textAlign: TextAlign.right,
-                              decoration: const InputDecoration(labelText: 'عنوان الموعد (مثال: قداس منتصف الأسبوع)'),
+                              decoration: const InputDecoration(labelText: 'عنوان الموعد الموجز'),
                               onChanged: (value) => currentTitle = value,
                               validator: (value) => value!.trim().isEmpty ? 'العنوان مطلوب' : null,
                             ),
                           ),
 
-                          _buildStyledFormField(
+                          buildStyledFormField(
                             child: DropdownButtonFormField<String>(
                               decoration: const InputDecoration(labelText: 'النوع'),
-                              value: currentType,
+                              initialValue: currentType,
                               items: types.map((String type) {
                                 return DropdownMenuItem<String>(
                                   value: type,
@@ -356,10 +387,10 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
                             ),
                           ),
 
-                          _buildStyledFormField(
+                          buildStyledFormField(
                             child: DropdownButtonFormField<String>(
                               decoration: const InputDecoration(labelText: 'اليوم'),
-                              value: currentDay,
+                              initialValue: currentDay,
                               items: days.map((String day) {
                                 return DropdownMenuItem<String>(value: day, child: Text(day));
                               }).toList(),
@@ -371,7 +402,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
                             ),
                           ),
 
-                          _buildStyledFormField(
+                          buildStyledFormField(
                             child: TextFormField(
                               initialValue: currentTime,
                               textAlign: TextAlign.right,
@@ -385,7 +416,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
                       ),
                     ),
                     
-                    // زر الحفظ (بالألوان المطلوبة)
+                    // زر الحفظ
                     ElevatedButton(
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
@@ -396,6 +427,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
                             day: currentDay,
                             time: currentTime,
                             type: currentType,
+                            churchName: currentChurchName, // 🆕 تمرير اسم الكنيسة
                           );
                         }
                       },
@@ -428,6 +460,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
     required String day,
     required String time,
     required String type,
+    required String churchName, // 🆕 استقبال اسم الكنيسة
   }) async {
     
     final newSchedule = MassesSchedule(
@@ -436,6 +469,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
       day: day,
       time: time.trim(),
       type: type,
+      churchName: churchName, // 🆕 حفظ اسم الكنيسة
     );
 
     try {
@@ -464,7 +498,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: AppColors.backgroundBeige, // ✅ تم تطبيق الخلفية البيج
+        backgroundColor: AppColors.backgroundBeige,
         body: Center(
           child: CircularProgressIndicator(color: AppColors.primaryMaroon),
         ),
@@ -472,7 +506,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
     }
     
     return Scaffold(
-      backgroundColor: AppColors.backgroundBeige, // ✅ تم تطبيق الخلفية البيج
+      backgroundColor: AppColors.backgroundBeige,
       appBar: AppBar(
         title: const Text('القداسات والعشيات', 
         style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold)),       
@@ -498,7 +532,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
         ),
       ),
       
-      floatingActionButton: _isAdmin // يعتمد على منطق (Admin OR Rector)
+      floatingActionButton: _isAdmin
           ? FloatingActionButton.extended(
               onPressed: () => _showScheduleForm(),
               label: const Text('إضافة موعد', style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold)),
@@ -514,7 +548,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
         children: [
           _ScheduleList(
             schedules: _schedules.where((s) => s.type == 'Mass').toList(),
-            isAdmin: _isAdmin, // يعتمد على منطق (Admin OR Rector)
+            isAdmin: _isAdmin,
             onEdit: _showScheduleForm,
             onDelete: _deleteSchedule,
             emptyMessage: _isAdmin
@@ -523,7 +557,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
           ),
           _ScheduleList(
             schedules: _schedules.where((s) => s.type == 'Vesper').toList(),
-            isAdmin: _isAdmin, // يعتمد على منطق (Admin OR Rector)
+            isAdmin: _isAdmin,
             onEdit: _showScheduleForm,
             onDelete: _deleteSchedule,
             emptyMessage: _isAdmin
@@ -537,7 +571,7 @@ class _MassesPageState extends State<MassesPage> with SingleTickerProviderStateM
 }
 
 // =========================================================
-// 3. ويدجت عرض القائمة (محسّن بصريًا ومنطقيًا)
+// 3. ويدجت عرض القائمة (ScheduleList) - تم التعديل لتقسيم الكنائس
 // =========================================================
 
 class _ScheduleList extends StatelessWidget {
@@ -572,7 +606,6 @@ class _ScheduleList extends StatelessWidget {
     return {'icon': icon, 'gradient': iconGradient};
   }
 
-
   void _showDeleteConfirmation(BuildContext context, MassesSchedule schedule) {
     showDialog(
       context: context,
@@ -585,7 +618,7 @@ class _ScheduleList extends StatelessWidget {
             onPressed: () { Navigator.of(ctx).pop(); },
           ),
           TextButton(
-            child: const Text('حذف', style: TextStyle(color: AppColors.primaryMaroon)), 
+            child: const Text('حذف', style: TextStyle(color: AppColors.alertRed)), 
             onPressed: () {
               onDelete(schedule.id);
               Navigator.of(ctx).pop();
@@ -593,6 +626,167 @@ class _ScheduleList extends StatelessWidget {
           ),
         ],
         actionsAlignment: MainAxisAlignment.start, 
+      ),
+    );
+  }
+
+  // 🆕 دالة مساعدة لتجميع المواعيد حسب اسم الكنيسة
+  Map<String, List<MassesSchedule>> _groupSchedulesByChurch(List<MassesSchedule> schedules) {
+    Map<String, List<MassesSchedule>> grouped = {};
+    for (var schedule in schedules) {
+      if (!grouped.containsKey(schedule.churchName)) {
+        grouped[schedule.churchName] = [];
+      }
+      grouped[schedule.churchName]!.add(schedule);
+    }
+    return grouped;
+  }
+  
+  // 🆕 مكون لعرض قسم كنيسة واحدة
+  Widget _buildChurchSection({
+    required String churchName,
+    required List<MassesSchedule> churchSchedules,
+    required BuildContext context,
+  }) {
+    final bool isLadyChurch = churchName.contains('العذراء') || churchName.contains('مريم');
+    final Color sectionColor = isLadyChurch ? AppColors.primaryMaroon : AppColors.primaryDarkBlue;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // عنوان القسم باسم الكنيسة
+        Padding(
+          padding: const EdgeInsets.only(top: 15.0, right: 10.0, left: 10.0, bottom: 5.0),
+          child: Text(
+            churchName,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: sectionColor,
+              decoration: TextDecoration.underline,
+              decorationColor: AppColors.accentGold.withOpacity(0.7),
+              decorationThickness: 2,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        
+        const Divider(color: AppColors.accentGold, thickness: 1, height: 10),
+        
+        // عرض بطاقات المواعيد الخاصة بهذه الكنيسة
+        ...churchSchedules.map((schedule) {
+          final visuals = _getScheduleVisuals(schedule);
+          return _buildScheduleCard(
+            context: context,
+            schedule: schedule,
+            visuals: visuals,
+            isAdmin: isAdmin,
+          );
+        }).toList(),
+        
+        const SizedBox(height: 20), // فاصل بين أقسام الكنائس
+      ],
+    );
+  }
+
+  // دالة بناء البطاقة الفردية (تم فصلها لتنظيف الكود)
+  Widget _buildScheduleCard({
+    required BuildContext context,
+    required MassesSchedule schedule,
+    required Map<String, dynamic> visuals,
+    required bool isAdmin,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Material(
+        color: AppColors.cardColor,
+        elevation: 6,
+        shadowColor: AppColors.primaryMaroon.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: isAdmin 
+              ? () => onEdit(schedule: schedule)
+              : null, 
+          child: Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: Row(
+              children: [
+                // 1. أيقونة الموعد
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: visuals['gradient'],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3)),
+                    ],
+                  ),
+                  child: Icon(
+                    visuals['icon'],
+                    color: AppColors.accentGold,
+                    size: 26,
+                  ),
+                ),
+
+                const SizedBox(width: 20),
+
+                // 2. تفاصيل الموعد
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end, 
+                    children: [
+                      Text(
+                        schedule.title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: AppColors.primaryMaroon),
+                        textAlign: TextAlign.right, 
+                      ),
+                      const SizedBox(height: 6),
+                      // أيقونة اليوم والوقت مفصولة
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end, 
+                        children: [
+                          Text(schedule.time, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.access_time_filled, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 10),
+                          Text(schedule.day, style: const TextStyle(color: AppColors.textSecondary)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.calendar_today, size: 14, color: AppColors.textSecondary),
+                        ].reversed.toList(), 
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 3. أزرار الإدارة
+                if (isAdmin) 
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_note, color: AppColors.accentGold, size: 28),
+                        onPressed: () => onEdit(schedule: schedule),
+                        tooltip: 'تعديل',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever, color: AppColors.alertRed, size: 28),
+                        onPressed: () => _showDeleteConfirmation(context, schedule),
+                        tooltip: 'حذف',
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -619,109 +813,23 @@ class _ScheduleList extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
+    // 1. تجميع المواعيد حسب الكنيسة
+    final groupedSchedules = _groupSchedulesByChurch(schedules);
+    
+    // 2. ترتيب أسماء الكنائس (العذراء أولاً، ثم القديس نيقولاوس)
+    final churchNames = groupedSchedules.keys.toList();
+    churchNames.sort((a, b) => MassesSchedule._getChurchOrder(a).compareTo(MassesSchedule._getChurchOrder(b)));
+    
+    // 3. بناء القائمة مع أقسام الكنائس المفصولة
+    return ListView(
       padding: const EdgeInsets.all(12.0),
-      itemCount: schedules.length,
-      itemBuilder: (context, index) {
-        final schedule = schedules[index];
-        final visuals = _getScheduleVisuals(schedule);
-        
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Material(
-            color: AppColors.cardColor,
-            elevation: 6,
-            shadowColor: AppColors.primaryMaroon.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              // ✅ تم التعديل: onTap يصبح null للمستخدم العادي (إلغاء التنبيه/التذكير)
-              onTap: isAdmin 
-                  ? () => onEdit(schedule: schedule)
-                  : null, 
-              child: Padding(
-                padding: const EdgeInsets.all(15.0),
-                child: Row(
-                  children: [
-                    // 1. أيقونة الموعد (مع التدرج اللوني)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: visuals['gradient'],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3)),
-                        ],
-                      ),
-                      child: Icon(
-                        visuals['icon'],
-                        color: AppColors.accentGold,
-                        size: 26,
-                      ),
-                    ),
-
-                    const SizedBox(width: 20),
-
-                    // 2. تفاصيل الموعد
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end, 
-                        children: [
-                          Text(
-                            schedule.title,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                                color: AppColors.primaryMaroon),
-                            textAlign: TextAlign.right, 
-                          ),
-                          const SizedBox(height: 6),
-                          // أيقونة اليوم والوقت مفصولة
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end, 
-                            children: [
-                              Text(schedule.time, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.access_time_filled, size: 14, color: AppColors.textSecondary),
-                              const SizedBox(width: 10),
-                              Text(schedule.day, style: const TextStyle(color: AppColors.textSecondary)),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.calendar_today, size: 14, color: AppColors.textSecondary),
-                            ].reversed.toList(), 
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // 3. العرض المشروط لأزرار الإدارة
-                    // ✅ تم التعديل: يتم عرض أزرار الإدارة فقط إذا كان isAdmin صحيحاً، وإلا لا يعرض شيئاً.
-                    if (isAdmin) 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_note, color: AppColors.accentGold, size: 28),
-                            onPressed: () => onEdit(schedule: schedule),
-                            tooltip: 'تعديل',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_forever, color: Color(0xFFC62828), size: 28),
-                            onPressed: () => _showDeleteConfirmation(context, schedule),
-                            tooltip: 'حذف',
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+      children: churchNames.map((name) {
+        return _buildChurchSection(
+          churchName: name,
+          churchSchedules: groupedSchedules[name]!,
+          context: context,
         );
-      },
+      }).toList(),
     );
   }
 }

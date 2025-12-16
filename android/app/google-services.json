@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "716491318181-nu9jcdgad2rv1hbotkh51rlkhnoe581h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.churchapp",
+            "certificate_hash": "6436ba0fb0fcc7c005320008e5d0524f183566aa"
+          }
+        },
+        {
           "client_id": "716491318181-v2rt3r61bpgslpir694snbf3h2bspjbf.apps.googleusercontent.com",
           "client_type": 3
         }

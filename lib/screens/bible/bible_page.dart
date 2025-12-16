@@ -217,12 +217,12 @@ class BibleFeaturePage extends StatelessWidget {
           future: service.loadBibleData(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
+              return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CircularProgressIndicator(color: AppColors.accentGold),
-                    const SizedBox(height: 16),
+                    CircularProgressIndicator(color: AppColors.accentGold),
+                    SizedBox(height: 16),
                     Text(
                       "جارِ تحميل كنوز المعرفة...", 
                       style: TextStyle(fontSize: 18, color: AppColors.primaryBlue, fontWeight: FontWeight.w600),
@@ -266,7 +266,7 @@ class BibleBooksPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int oldTestamentCount = 39; 
+    const int oldTestamentCount = 39; 
     final bool canSplit = allBooks.length >= oldTestamentCount;
 
     final List<BibleBookData> oldTestament = canSplit ? allBooks.sublist(0, oldTestamentCount) : allBooks;
@@ -447,7 +447,7 @@ class BibleVersesPage extends StatelessWidget {
   final BibleBookData book;
   final int chapterIndex; 
 
-  BibleVersesPage({super.key, required this.book, required this.chapterIndex});
+  const BibleVersesPage({super.key, required this.book, required this.chapterIndex});
 
   @override
   Widget build(BuildContext context) {

@@ -67,8 +67,6 @@ final List<FeastModel> feastsList = [
   const FeastModel(title: 'عيد النيروز', dateGregorian: 'الخميس 11 سبتمبر', dateCoptic: '1 توت 1742'),
   const FeastModel(title: 'تذكار ظهور الصليب المقدس', dateGregorian: 'السبت 27 سبتمبر', dateCoptic: '17 توت 1742'),
   const FeastModel(title: 'بدء صوم الميلاد', dateGregorian: 'الثلاثاء 25 نوفمبر', dateCoptic: '16 هاتور 1742'),
-  // أضفنا هذا العيد مؤقتاً لغرض الاختبار بما أننا في شهر ديسمبر حالياً
-  const FeastModel(title: 'عيد الأنبا بيشوي', dateGregorian: 'الأربعاء 10 ديسمبر', dateCoptic: '1 كيهك 1742'),
 ];
 
 
@@ -213,10 +211,10 @@ class _FeastCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 // التاريخ القبطي
-                Icon(Icons.calendar_month, color: AppColors.textSecondary, size: 20),
+                const Icon(Icons.calendar_month, color: AppColors.textSecondary, size: 20),
                 const SizedBox(width: 5),
                 Text(
-                  '${feast.dateCoptic}',
+                  feast.dateCoptic,
                   style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                   textAlign: TextAlign.right,
                 ),
@@ -224,10 +222,10 @@ class _FeastCard extends StatelessWidget {
                 const SizedBox(width: 20),
                 
                 // التاريخ الميلادي
-                Icon(Icons.date_range, color: AppColors.primaryBlue, size: 20),
+                const Icon(Icons.date_range, color: AppColors.primaryBlue, size: 20),
                 const SizedBox(width: 5),
                 Text(
-                  '${feast.dateGregorian}',
+                  feast.dateGregorian,
                   style: const TextStyle(fontSize: 14, color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.right,
                 ),

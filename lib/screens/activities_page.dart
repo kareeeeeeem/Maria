@@ -345,7 +345,6 @@ class _EventCard extends StatelessWidget {
   final CollectionReference eventsCollection; // 🆕 مطلوب لتمريرها لشاشة التعديل
 
   const _EventCard({
-    super.key,
     required this.event, 
     required this.canEdit, 
     required this.onDelete,
@@ -707,7 +706,7 @@ class _AddEditEventFormState extends State<AddEditEventForm> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primaryStone,
               onPrimary: AppColors.accentGold,
               onSurface: AppColors.primaryStone,
@@ -732,7 +731,7 @@ class _AddEditEventFormState extends State<AddEditEventForm> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primaryStone,
               onPrimary: AppColors.accentGold,
               onSurface: AppColors.primaryStone,

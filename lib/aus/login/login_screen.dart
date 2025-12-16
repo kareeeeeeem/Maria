@@ -198,7 +198,7 @@ Future<void> _signInWithGoogle() async {
     final googleSignIn = GoogleSignIn.instance; 
     await googleSignIn.initialize(); 
     
-    final GoogleSignInAccount? googleUser = await googleSignIn.authenticate(
+    final GoogleSignInAccount googleUser = await googleSignIn.authenticate(
       scopeHint: ['email','profile'],
     );
 
@@ -208,7 +208,7 @@ Future<void> _signInWithGoogle() async {
       return;
     }
 
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
     final credential = GoogleAuthProvider.credential(
       idToken: googleAuth.idToken,
@@ -250,36 +250,45 @@ Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = false);
   }
 }
-
 Future<void> _signInWithFacebook() async {
+  // تفعيل مؤشر التحميل الخاص بفيسبوك
   setState(() => _isFacebookLoading = true);
 
   try {
+    // 1. تسجيل الخروج من أي جلسة قديمة لضمان نظافة عملية المصادقة
     await FacebookAuth.instance.logOut(); 
 
+    // 2. بدء عملية تسجيل الدخول. تم إزالة قيد 'webOnly' للسماح لـ SDK باختيار السلوك الأمثل، 
+    // والذي يحل مشكلة الإلغاء (Cancelled) على iOS.
     final LoginResult result = await FacebookAuth.instance.login(
-      loginBehavior: LoginBehavior.webOnly, 
+      // تحديد الأذونات المطلوبة
+      permissions: ['email', 'public_profile'], 
     );
 
 
     if (result.status == LoginStatus.success) {
+      // إذا نجح تسجيل الدخول عبر فيسبوك، نحصل على رمز الوصول (Access Token)
       final credential = FacebookAuthProvider.credential(
         result.accessToken!.token,
       );
 
+      // 3. تسجيل الدخول إلى Firebase باستخدام رمز الوصول من فيسبوك
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
 
       final user = userCredential.user;
 
       if (user != null) {
+        // 4. حفظ التوكن في SharedPreferences والتأكد من حالة إكمال البيانات
         final String? idToken = await user.getIdToken();
         if (idToken != null) {
             final SharedPreferences prefs = await SharedPreferences.getInstance();
             await prefs.setString('user_token', idToken); 
+            // يتم الاحتفاظ بالقيمة المخزنة مسبقاً، وإلا يتم تعيينها إلى false
             await prefs.setBool('data_completed', prefs.getBool('data_completed') ?? false); 
         }
 
+        // 5. التحقق من وجود المستخدم في Firestore وإضافة بياناته الأولية إذا كان مستخدماً جديداً
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -293,28 +302,30 @@ Future<void> _signInWithFacebook() async {
             'isAdmin': false,
             'createdAt': FieldValue.serverTimestamp(),
           });
-          // إذا كان مستخدماً جديداً، تأكد من تعيين data_completed إلى false
+          // إذا كان مستخدماً جديداً، تأكد من تعيين data_completed إلى false لتوجهيه لإدخال البيانات
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setBool('data_completed', false);
         }
 
+        // 6. التوجيه إلى الشاشة التالية بناءً على حالة إكمال البيانات
         await _navigateToNextScreen();
 
       }
     } else if (result.status == LoginStatus.cancelled) {
-        // التعامل مع الإلغاء بنفس طريقة الخطأ لعرض رسالة للمستخدم
+        // التعامل مع الإلغاء (الذي كنا نشاهده)
         _handleSocialLoginError( FirebaseAuthException(code: 'cancelled', message: 'User cancelled Facebook sign-in'), 'Facebook');
     } else {
         // أي فشل آخر في عملية تسجيل الدخول عبر الفيسبوك نفسه
         _handleSocialLoginError(Exception("Facebook Login Failed: ${result.message}"), 'Facebook');
     }
   } catch (e) {
+    // التقاط أي استثناءات أخرى تحدث أثناء العملية
     _handleSocialLoginError(e, 'Facebook');
   } finally {
+    // إيقاف مؤشر التحميل
     setState(() => _isFacebookLoading = false);
   }
 }
-
   // =========================================================================
   // 7. Password Reset Logic - تم تحديث معالجة الأخطاء
   // =========================================================================
@@ -660,35 +671,71 @@ Future<void> _signInWithFacebook() async {
                       const SizedBox(height: 10),
 
                       // Google Login Button 
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        height: 50,
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _signInWithGoogle,
-                          icon: const Icon(
-                            Icons.g_mobiledata, 
-                            size: 28,
-                            color: Colors.white,
-                          ),
-                          label: const Text(
-                            'المتابعة باستخدام Google',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFDB4437), 
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            elevation: 5,
-                            minimumSize: const Size(double.infinity, 50),
-                          ),
-                        ),
-                      ),
+                     // 💡 هذا هو الجزء المحدث
+Stack(
+  // نضع الزر والشارة فوق بعضهما البعض
+  clipBehavior: Clip.none, // مهم للسماح بظهور الشارة خارج حدود الزر
+  children: [
+    // 1. الزر الأساسي (المحتوى الذي كان لديك)
+    SizedBox(
+      width: MediaQuery.of(context).size.width * 0.8,
+      height: 50, 
+      child: ElevatedButton.icon(
+        onPressed: _isLoading ? null : _signInWithGoogle,
+        icon: const Icon(
+          Icons.g_mobiledata,
+          size: 28,
+          color: Colors.white,
+        ),
+        label: const Text(
+          'المتابعة باستخدام Google', 
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFDB4437),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          elevation: 5,
+        ),
+      ),
+    ),
+    
+    // 2. الشارة / التاج (التي تشير إلى التوصية)
+    Positioned(
+      top: -10, // ارتفاع الشارة فوق الزر
+      left: 10, // إزاحتها لليسار (باتجاه الأعلى اليسار)
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.amber, // لون جذاب ومميز
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 3,
+              offset: const Offset(1, 1),
+            ),
+          ],
+        ),
+        child: const Text(
+          'يفضل', // أو "موصى به" أو "الأكثر شيوعاً"
+          style: TextStyle(
+            color: Colors.black, // نص غامق على خلفية فاتحة
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    ),
+  ],
+),
+// 💡 نهاية الجزء المحدث
 
                       const SizedBox(height: 10),
 

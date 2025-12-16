@@ -394,7 +394,6 @@ class _ItemCard extends StatelessWidget {
     required this.canEdit, // 🔴 استخدام الاسم الجديد
     required this.onDelete,
     required this.onEdit,
-    super.key,
   });
 
   // دالة مساعدة لربط القيمة المخزنة في قاعدة البيانات (DB Value) باسم الموقع المعروض
@@ -498,7 +497,7 @@ class _ItemCard extends StatelessWidget {
 
                       // السعر
                       Text(
-                        '${NumberFormat.currency(locale: 'ar', symbol: 'ج.م').format(item.unitPrice)}', 
+                        NumberFormat.currency(locale: 'ar', symbol: 'ج.م').format(item.unitPrice), 
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -836,7 +835,7 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
                     borderSide: const BorderSide(color: AppColors.primaryBlue),
                   ),
                 ),
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 items: AddEditItemScreen.itemCategories.map((String category) {
                   return DropdownMenuItem<String>(
                     value: category,
@@ -892,7 +891,7 @@ class _AddEditItemScreenState extends State<AddEditItemScreen> {
                     borderSide: const BorderSide(color: AppColors.primaryBlue),
                   ),
                 ),
-                value: _selectedLocation,
+                initialValue: _selectedLocation,
                 items: widget.locations.map((String location) {
                   return DropdownMenuItem<String>(
                     value: location,

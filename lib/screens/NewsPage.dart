@@ -1,4 +1,4 @@
-// lib/screens/news/news_page.dart (أو news_page.dart إذا لم تستخدم مجلدات)
+// lib/screens/news/news_page.dart
 
 import 'package:churchapp/models/church_post.dart';
 import 'package:churchapp/services/supabase_service.dart';
@@ -9,12 +9,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart'; 
 import 'dart:async'; 
 import 'dart:io';
-import 'package:image_picker/image_picker.dart'; // 🆕 لـ AddEditPostScreen
-
+import 'package:image_picker/image_picker.dart'; 
 
 // =========================================================
-// I. نموذج البيانات والثوابت (AppColors فقط)
+// I. نموذج البيانات والثوابت (AppColors)
 // =========================================================
+
 class AppColors {
   static const Color primaryBlue = Color(0xFF4E342E); // بني داكن
   static const Color secondaryGold = Color(0xFFFFF8E1); // ذهبي فاتح
@@ -25,14 +25,61 @@ class AppColors {
   static const Color alertRed = Color(0xFFE53935); 
 }
 
-// ⚠️ تمت إزالة تعريف ChurchPost من هنا واستبداله بالاستيراد أعلاه
-
+// ⚠️ يُفترض أن ChurchPost موجود في 'package:churchapp/models/church_post.dart'
+// ⚠️ يُفترض أن SupabaseService موجود في 'package:churchapp/services/supabase_service.dart'
 
 // =========================================================
-// II. الصفحة الرئيسية (NewsPage)
+// II. شاشة عرض الخبر بملء الشاشة (FullScreenImageScreen)
 // =========================================================
-// ... (NewsPage و _NewsPageState تبقى كما هي)
-// ... (setupAuthListener و deletePost تبقى كما هي)
+// 🆕 هذا الجزء هو المسؤول عن تكبير الصور عند الضغط
+class FullScreenImageScreen extends StatelessWidget {
+  final String imageUrl;
+  final String tag; // لربط Hero Animation
+
+  const FullScreenImageScreen({
+    super.key,
+    required this.imageUrl,
+    required this.tag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black, 
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: Hero(
+          tag: tag, 
+          child: InteractiveViewer(
+            panEnabled: true, 
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.secondaryGold),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.error_outline, size: 100, color: AppColors.alertRed),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =========================================================
+// III. الصفحة الرئيسية (NewsPage)
+// =========================================================
 
 class NewsPage extends StatefulWidget {
   const NewsPage({super.key});
@@ -95,10 +142,6 @@ class _NewsPageState extends State<NewsPage> {
 
       if (user != null) {
         _checkAdminStatus(user.uid);
-        
-        // ❌ تم حذف جميع محاولات ربط Supabase Auth هنا.
-        // نعتمد الآن على سياسة Storage الجديدة (anon: true) 
-
       } else {
         setState(() {
           _isAdmin = false;
@@ -137,7 +180,7 @@ class _NewsPageState extends State<NewsPage> {
     }
     
     try {
-      // ⚠️ ملاحظة: يجب إضافة منطق حذف الملفات من Supabase Storage هنا لاحقاً!
+      // ⚠️ يجب إضافة منطق حذف الملفات من Supabase Storage هنا
       await _newsCollection.doc(postId).delete(); 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -246,7 +289,7 @@ class _NewsPageState extends State<NewsPage> {
 }
 
 // =========================================================
-// III. مكونات الواجهة (UI Components)
+// IV. مكونات الواجهة (UI Components)
 // =========================================================
 
 // ---------------------------------------------------------
@@ -264,7 +307,6 @@ class _PostCard extends StatelessWidget {
     required this.isAdmin,
     required this.onDelete,
     required this.onEdit,
-    super.key,
   });
 
   String _formatDate(DateTime date) {
@@ -367,7 +409,7 @@ class _PostCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             
-            // 🆕 عرض الوسائط المرفقة
+            // 🆕 عرض الوسائط المرفقة (تم التعديل لإضافة GestureDetector و Hero)
             if (post.mediaUrls.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 15.0),
@@ -379,17 +421,29 @@ class _PostCard extends StatelessWidget {
                     reverse: true, // لعرض العناصر من اليمين إلى اليسار
                     itemBuilder: (context, index) {
                       final url = post.mediaUrls[index];
-                      // افتراض بسيط لتحديد نوع الوسائط
                       final isImage = url.toLowerCase().contains('.jpg') || 
                                       url.toLowerCase().contains('.png') || 
                                       url.toLowerCase().contains('.jpeg');
                       
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: isImage
-                              ? Image.network(
+                      // مفتاح Hero فريد لكل عنصر
+                      final heroTag = 'media-tag-${post.id}-$index'; 
+                      
+                      if (isImage) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: GestureDetector( // 🆕 لاكتشاف الضغط
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (ctx) => FullScreenImageScreen(imageUrl: url, tag: heroTag),
+                                ),
+                              );
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Hero( // 🆕 لربط الانتقال
+                                tag: heroTag,
+                                child: Image.network(
                                   url,
                                   width: 150,
                                   fit: BoxFit.cover,
@@ -399,20 +453,31 @@ class _PostCard extends StatelessWidget {
                                   },
                                   errorBuilder: (context, error, stackTrace) => 
                                     const Icon(Icons.error_outline, size: 50, color: AppColors.alertRed),
-                                )
-                              : Container(
-                                  width: 150,
-                                  color: Colors.black54,
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.video_camera_back, color: Colors.white, size: 40),
-                                      Text('فيديو', style: TextStyle(color: Colors.white)),
-                                    ],
-                                  ),
                                 ),
-                        ),
-                      );
+                              ),
+                            ),
+                          ),
+                        );
+                      } else {
+                         // عرض الفيديو (لا يمكن تكبيره بنفس الطريقة)
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                                width: 150,
+                                color: Colors.black54,
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.video_camera_back, color: Colors.white, size: 40),
+                                    Text('فيديو', style: TextStyle(color: Colors.white)),
+                                  ],
+                                ),
+                              ),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),
@@ -465,11 +530,10 @@ class AddEditPostScreen extends StatefulWidget {
 }
 
 class _AddEditPostScreenState extends State<AddEditPostScreen> {
-  // 🆕 متغيرات ومكونات الوسائط
   final SupabaseService _supabaseService = SupabaseService(); 
   final ImagePicker _picker = ImagePicker(); 
-  List<XFile> _selectedFiles = []; // الملفات المختارة حديثاً
-  List<String> _currentMediaUrls = []; // الروابط القديمة (للتعديل)
+  List<XFile> _selectedFiles = []; 
+  List<String> _currentMediaUrls = []; 
   int _uploadingCount = 0; 
   double _uploadProgress = 0.0; 
 
@@ -482,12 +546,11 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
   @override
   void initState() {
     super.initState();
-    // لملء الحقول والروابط عند التعديل
     if (widget.post != null) {
       _titleController.text = widget.post!.title;
       _bodyController.text = widget.post!.body;
       _isUrgent = widget.post!.isUrgent;
-      _currentMediaUrls = List.from(widget.post!.mediaUrls); // نسخ الروابط الموجودة
+      _currentMediaUrls = List.from(widget.post!.mediaUrls); 
     }
   }
 
@@ -498,13 +561,8 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     super.dispose();
   }
   
-  // 🆕 دالة اختيار الصور والفيديوهات
   Future<void> _pickMedia() async {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
-
-    // 🔴 ملاحظة: يمكنك استخدام دالة _picker.pickVideo() لإضافة خيار الفيديو إذا أردت
-    // يمكنك أيضاً استخدام مكتبات متقدمة مثل file_picker لدمج الاختيار.
-
     if (pickedFiles.isNotEmpty) {
       setState(() {
         _selectedFiles = [..._selectedFiles, ...pickedFiles];
@@ -512,26 +570,21 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     }
   }
   
-  // 🆕 دالة إزالة الملف المحلي (الذي لم يتم رفعه بعد)
   void _removeFile(XFile file) {
     setState(() {
       _selectedFiles.remove(file);
     });
   }
   
-  // 🆕 دالة إزالة الرابط القديم (من Firestore)
   void _removeUrl(String url) {
     setState(() {
       _currentMediaUrls.remove(url);
     });
-    // ⚠️ ملاحظة: لتبسيط الكود، لم يتم إضافة منطق حذف الملف من Supabase هنا.
-    // يجب إضافة _supabaseService.deleteFile(url) هنا للحذف الفعلي.
+    // ⚠️ يجب إضافة _supabaseService.deleteFile(url) هنا للحذف الفعلي.
   }
   
-  // 🆕 دالة رفع الملفات إلى Supabase Storage
   Future<List<String>> _handleFileUploads() async {
     if (_selectedFiles.isEmpty) {
-        // لا يوجد ملفات جديدة للرفع، نرجع فقط الروابط القديمة المتبقية بعد الحذف
         return _currentMediaUrls;
     }
 
@@ -541,10 +594,9 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     });
     
     try {
-        // استخدام دالة الخدمة الموحدة لرفع الملفات
         final newUrls = await _supabaseService.uploadFiles(
             _selectedFiles, 
-            (progress) { // تحديث التقدم عبر الـ Callback
+            (progress) { 
                 if (mounted) {
                     setState(() {
                         _uploadProgress = progress;
@@ -553,7 +605,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
             }
         );
         
-        // دمج الروابط الجديدة مع الروابط القديمة التي لم يتم حذفها
         return [..._currentMediaUrls, ...newUrls]; 
 
     } catch (e) {
@@ -569,7 +620,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
   }
 
 
-  // دالة الإرسال (إضافة/تعديل) - تم تحديثها لدمج رفع الملفات
   Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -588,7 +638,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     setState(() { _isLoading = true; });
 
     try {
-      // 1. رفع الملفات والحصول على قائمة عناوين URL المدمجة
       final List<String> finalMediaUrls = await _handleFileUploads(); 
       
       final newPost = ChurchPost(
@@ -597,7 +646,7 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
         body: _bodyController.text,
         date: DateTime.now(), 
         isUrgent: _isUrgent,
-        mediaUrls: finalMediaUrls, // 🆕 تمرير قائمة الـ URLs النهائية
+        mediaUrls: finalMediaUrls,
       );
 
       if (widget.post == null) {
@@ -608,7 +657,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
           );
         }
       } else {
-        // تعديل منشور موجود (نحن نحدث المنشور نفسه ولكن نستخدم الروابط الجديدة)
         await widget.newsCollection.doc(widget.post!.id).update(newPost.toMap());
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -620,10 +668,9 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-   } catch (e, stacktrace) { // 🆕 هنا تم إضافة 'stacktrace'
-      // 🆕 اطبع الخطأ كاملاً بالإضافة إلى الـ Stack Trace لمزيد من التفاصيل
+   } catch (e, stacktrace) { 
       debugPrint('🚨🚨🚨 Submission Error DETAILS: $e'); 
-      debugPrint('🚨🚨🚨 Stack Trace: $stacktrace'); // 🆕 طباعة تتبع الخطأ كاملاً
+      debugPrint('🚨🚨🚨 Stack Trace: $stacktrace'); 
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -636,7 +683,7 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       }
     }
   }
-  // مكون مساعد لحقل الإدخال
+  
   Widget _buildTextFormField({
     required TextEditingController controller,
     required String label,
@@ -665,9 +712,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     );
   }
   
-  // ---------------------------------------------------------
-  // مكون عرض الملفات المحلية المختارة (_MediaPreviewList)
-  // ---------------------------------------------------------
   Widget _MediaPreviewList() {
     return Wrap(
       spacing: 8.0,
@@ -675,7 +719,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
       children: _selectedFiles.map((file) {
         return Chip(
           backgroundColor: AppColors.secondaryGold,
-          // 🆕 عرض اسم الملف فقط
           label: Text(file.name.length > 20 ? '${file.name.substring(0, 17)}...' : file.name), 
           deleteIcon: const Icon(Icons.close, size: 18),
           onDeleted: () => _removeFile(file),
@@ -684,9 +727,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
     );
   }
 
-  // ---------------------------------------------------------
-  // مكون عرض الروابط الموجودة مسبقاً (_ExistingMediaUrls)
-  // ---------------------------------------------------------
   Widget _ExistingMediaUrls() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -700,7 +740,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
         ..._currentMediaUrls.map((url) {
           final isImage = url.toLowerCase().contains('.jpg') || url.toLowerCase().contains('.png');
           final icon = isImage ? Icons.image : Icons.videocam;
-          // 🆕 استخراج اسم الملف من الـ URL للعرض
           final fileName = Uri.parse(url).pathSegments.last; 
 
           return ListTile(
@@ -741,7 +780,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              // حقل العنوان
               _buildTextFormField(
                 controller: _titleController,
                 label: 'عنوان الخبر الموجز',
@@ -749,7 +787,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
               ),
               const SizedBox(height: 20),
 
-              // حقل المحتوى
               _buildTextFormField(
                 controller: _bodyController,
                 label: 'المحتوى التفصيلي',
@@ -758,7 +795,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
               ),
               const SizedBox(height: 20),
 
-              // خيار عاجل
               SwitchListTile(
                 title: const Text('تصنيف الخبر كـ "عاجل"', textAlign: TextAlign.right),
                 subtitle: const Text('سيتم تمييزه بحدود حمراء', textAlign: TextAlign.right),
@@ -768,13 +804,12 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
                     _isUrgent = value;
                   });
                 },
-                activeColor: AppColors.alertRed,
+                activeThumbColor: AppColors.alertRed,
                 contentPadding: EdgeInsets.zero,
               ),
               
               const SizedBox(height: 20),
 
-              // 🆕 زر اختيار الصور والفيديوهات
               OutlinedButton.icon(
                 onPressed: _pickMedia,
                 icon: const Icon(Icons.photo_library),
@@ -788,15 +823,12 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
               
               const SizedBox(height: 15),
 
-              // 🆕 عرض الملفات المختارة حالياً (المحلية)
               if (_selectedFiles.isNotEmpty)
                 _MediaPreviewList(),
               
-              // 🆕 عرض الروابط الموجودة مسبقاً (للتعديل)
               if (_currentMediaUrls.isNotEmpty && _selectedFiles.isEmpty)
                 _ExistingMediaUrls(),
 
-              // 🆕 عرض شريط التقدم عند الرفع
               if (_uploadingCount > 0)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -820,7 +852,6 @@ class _AddEditPostScreenState extends State<AddEditPostScreen> {
               
               const SizedBox(height: 30),
 
-              // زر الإرسال
               ElevatedButton(
                 onPressed: _isLoading ? null : _submitPost,
                 style: ElevatedButton.styleFrom(

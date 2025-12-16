@@ -119,13 +119,13 @@ class _ProfilePageState extends State<ProfilePage> {
   void _fetchUserData() {
     if (_currentUser == null) return;
 
-    final docRef = FirebaseFirestore.instance.collection('users').doc(_currentUser!.uid);
+    final docRef = FirebaseFirestore.instance.collection('users').doc(_currentUser.uid);
 
     // الاستماع للتحديثات المباشرة على وثيقة المستخدم
     _dataSubscription = docRef.snapshots().listen((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
         // إذا كانت الوثيقة موجودة، قم بجلب البيانات
-        final data = PersonData.fromFirestore(snapshot.data()!, _currentUser!);
+        final data = PersonData.fromFirestore(snapshot.data()!, _currentUser);
         setState(() {
           _userData = data;
           _isLoading = false;
@@ -133,7 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
       } else {
         // إذا لم تكن الوثيقة موجودة، استخدم بيانات افتراضية من Auth
         setState(() {
-          _userData = PersonData.defaultData(_currentUser!);
+          _userData = PersonData.defaultData(_currentUser);
           _isLoading = false;
         });
       }

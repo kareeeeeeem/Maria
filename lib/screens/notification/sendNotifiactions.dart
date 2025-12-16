@@ -65,7 +65,7 @@ class _AdminNotificationPageState extends State<AdminNotificationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red.shade900,
-          content: Text('❌ Failed to load API Key. Check internet/Firestore setup.'),
+          content: const Text('❌ Failed to load API Key. Check internet/Firestore setup.'),
         ),
       );
     }
@@ -75,7 +75,7 @@ class _AdminNotificationPageState extends State<AdminNotificationPage> {
   Future<void> sendNotification() async {
     if (_oneSignalApiKey == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('API Key is missing. Please set it up in Firestore.')),
+        const SnackBar(content: Text('API Key is missing. Please set it up in Firestore.')),
       );
       return;
     }

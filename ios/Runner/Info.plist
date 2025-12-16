@@ -3,7 +3,6 @@
 <plist version="1.0">
 <dict>
 
-    <!-- Required Permissions -->
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>We need your location to show nearby events.</string>
 
@@ -42,31 +41,21 @@
     <key>CFBundleVersion</key>
     <string>$(FLUTTER_BUILD_NUMBER)</string>
 
-    <!-- Facebook Configuration -->
     <key>FacebookAppID</key>
-    <string>24770887475900030</string>
+    <string>1548675189494895</string> 
 
     <key>FacebookDisplayName</key>
-    <string>Maria</string>
+    <string>churchapp</string>
 
     <key>FacebookClientToken</key>
-    <string>b624a63ea2b7b2558a32d7e6e61ca2e</string>
+    <string>b624a33ed2f62b7358a32e675e1cea2c</string>
 
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>fbapi</string>
-        <string>fb-messenger-api</string>
-        <string>fbauth2</string>
-        <string>fbshareextension</string>
-    </array>
-
-    <!-- URL Schemes -->
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>fb24770887475900030</string>
+                <string>fb1548675189494895</string> 
             </array>
         </dict>
     </array>
@@ -100,8 +89,17 @@
 
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
+    
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>fbapi</string>
+        <string>fb-messenger-api</string>
+        <string>fbauth2</string>
+        <string>fbshareextension</string>
+        <string>tel</string>       
+        <string>mailto</string>    
+    </array>
 
-    <!-- Background Modes -->
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>

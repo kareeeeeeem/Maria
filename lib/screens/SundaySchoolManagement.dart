@@ -10,7 +10,7 @@ import 'dart:developer';
 // ***************************************************************
 // متغيرات البيئة - لا يجب تغييرها إلا في إعدادات البيئة الخارجية
 const String __app_id = 'default-app-id';
-final String __initial_auth_token = ''; 
+const String __initial_auth_token = ''; 
 
 // متغيرات Firebase الافتراضية - يرجى التأكد من صحتها في بيئتك
 const Map<String, dynamic> _firebaseConfig = {
@@ -180,7 +180,7 @@ class SundaySchoolService {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return null;
     // المسار الصحيح: artifacts/{appId}/users/{userId}/sunday_school_{collectionName}
-return _db.collection('artifacts/${__app_id}/public/data/sunday_school_$collectionName');  }
+return _db.collection('artifacts/$__app_id/public/data/sunday_school_$collectionName');  }
 
   // المراجع للمجموعات
   CollectionReference? get _classesCollection => _getCollectionDirect('classes');
@@ -712,10 +712,10 @@ class ClassesScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.primaryBlue, width: 2),
                     ),
-                    child: Center(child: Text('${classItem.order}', style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.w900, fontSize: 16))),
+                    child: Center(child: Text('${classItem.order}', style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.w900, fontSize: 16))),
                   ),
                   title: Text(classItem.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                  subtitle: Text('الترتيب: ${classItem.order}', style: TextStyle(color: AppColors.textSecondary)),
+                  subtitle: Text('الترتيب: ${classItem.order}', style: const TextStyle(color: AppColors.textSecondary)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -761,7 +761,7 @@ class StudentsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         
-        title: Text(isNew ? 'إضافة تلميذ جديد' : 'تعديل بيانات: ${student!.name}'),
+        title: Text(isNew ? 'إضافة تلميذ جديد' : 'تعديل بيانات: ${student.name}'),
         content: StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return SizedBox(
@@ -905,7 +905,7 @@ class StudentsScreen extends StatelessWidget {
                 backgroundColor: AppColors.primaryBlue,
                  centerTitle: true,
 
-        title: Text(' ${classItem.name} : تلاميذ فصل', style: TextStyle(color: AppColors.secondaryGold)),
+        title: Text(' ${classItem.name} : تلاميذ فصل', style: const TextStyle(color: AppColors.secondaryGold)),
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'addStudentBtn',
@@ -1141,7 +1141,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedClassId,
+                  initialValue: _selectedClassId,
                   decoration: InputDecoration(
                     labelText: 'اختيار الفصل',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1530,7 +1530,7 @@ class _BirthdaysScreenState extends State<BirthdaysScreen> {
         Padding(
           padding: const EdgeInsets.all(12.0),
           child: DropdownButtonFormField<String>(
-            value: _selectedClassId,
+            initialValue: _selectedClassId,
             decoration: InputDecoration(
               labelText: 'فلترة حسب الفصل',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1590,7 +1590,7 @@ class _BirthdaysScreenState extends State<BirthdaysScreen> {
                     _selectedClassId == 'ALL' 
                       ? 'لا توجد أعياد ميلاد قادمة في الـ 60 يوماً القادمة.'
                       : 'لا توجد أعياد ميلاد قادمة في هذا الفصل.', 
-                    style: TextStyle(fontSize: 16, color: Colors.grey)
+                    style: const TextStyle(fontSize: 16, color: Colors.grey)
                   ),
                 );
               }
@@ -1613,11 +1613,11 @@ class _BirthdaysScreenState extends State<BirthdaysScreen> {
                     icon = Icons.star;
                     color = Colors.red.shade600;
                   } else if (daysLeft <= 7) {
-                    subtitle = 'متبقي ${daysLeft} أيام (قريباً جداً)';
+                    subtitle = 'متبقي $daysLeft أيام (قريباً جداً)';
                     icon = Icons.celebration;
                     color = Colors.orange.shade600;
                   } else {
-                    subtitle = 'متبقي ${daysLeft} أيام';
+                    subtitle = 'متبقي $daysLeft أيام';
                     icon = Icons.cake;
                     color = Colors.green.shade600;
                   }
@@ -1635,7 +1635,7 @@ class _BirthdaysScreenState extends State<BirthdaysScreen> {
                       leading: Icon(icon, color: color, size: 35),
                       title: Text(
                         student.name,
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textPrimary),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textPrimary),
                       ),
                       subtitle: Text(
                         subtitle,

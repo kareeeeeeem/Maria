@@ -1,10 +1,12 @@
 
 import 'package:churchapp/aus/login/login_screen.dart';
 import 'package:churchapp/aus/signup/signup_screen.dart';
+import 'package:churchapp/screens/ChurchInfoScreen.dart';
 import 'package:churchapp/screens/FeastsPage.dart';
 import 'package:churchapp/screens/HomePage.dart';
 import 'package:churchapp/screens/bible/bible_page.dart';
 import 'package:churchapp/screens/ChurchStore.dart';
+import 'package:churchapp/screens/christian_bot_page.dart';
 import 'package:churchapp/screens/libraryPage.dart';
 import 'package:churchapp/aus/signup/MemberShipSignUp.dart';
 import 'package:churchapp/screens/NewsPage.dart';
@@ -44,8 +46,8 @@ final Map<String, WidgetBuilder> routes = {
         '/visit': (context) => const VisitationPage(), 
         '/service': (context) => const VisitationPage(), 
         '/meetings': (context) => const MeetingsPage(), 
-        '/activities': (context) =>  ActivitiesPage(), 
-        '/events': (context) =>  ActivitiesPage(), 
+        '/activities': (context) =>  const ActivitiesPage(), 
+        '/events': (context) =>  const ActivitiesPage(), 
         '/news': (context) => const NewsPage(), 
         '/profile': (context) => const ProfilePage(), 
         '/admin': (context) => const AdminPage(), 
@@ -62,6 +64,8 @@ final Map<String, WidgetBuilder> routes = {
         '/SundaySchoolHome': (context) => const SundaySchoolHome(),
         '/AdminRequestsPage': (context) => const AdminRequestsPage(),
         '/feasts': (context) => const FeastsPage(),
+        '/ChristianBotPage': (context) =>  ChristianBotPage(),
+        '/ChurchInfoScreen': (context) =>  ChurchInfoScreen(),
 
 
         // '/DonationPage': (context) => const DonationPage(),

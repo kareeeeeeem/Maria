@@ -72,9 +72,9 @@ class AdminPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ⬅️ ملاحظة هامة: يجب إضافة فحص الصلاحيات هنا
-    final bool _isUserAdmin = true; // يتم استبدالها بفحص حقيقي (مثلاً: Firebase Auth Role Check)
+    const bool isUserAdmin = true; // يتم استبدالها بفحص حقيقي (مثلاً: Firebase Auth Role Check)
 
-    if (!_isUserAdmin) {
+    if (!isUserAdmin) {
       return const Scaffold(
         appBar:  _AdminAppBar(),
         body: Center(

@@ -313,7 +313,7 @@ Future<void> _checkAdminStatus(String uid) async {
                             labelText: 'اليوم',
                             border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                           ),
-                          value: currentDay,
+                          initialValue: currentDay,
                           items: days.map((String day) {
                             return DropdownMenuItem<String>(
                               value: day,
@@ -334,7 +334,7 @@ Future<void> _checkAdminStatus(String uid) async {
                         TextFormField(
                           initialValue: currentTime,
                           decoration: const InputDecoration(
-                            labelText: 'الوقت (مثال: 7:00 مساءً)',
+                            labelText: 'الوقت ',
                             border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                           ),
                           onChanged: (value) => currentTime = value,
@@ -346,7 +346,7 @@ Future<void> _checkAdminStatus(String uid) async {
                         TextFormField(
                           initialValue: currentLocation,
                           decoration: const InputDecoration(
-                            labelText: 'الموقع (مثال: قاعة مارمرقس)',
+                            labelText: 'المكان',
                             border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                           ),
                           onChanged: (value) => currentLocation = value,
@@ -455,7 +455,7 @@ Future<void> _checkAdminStatus(String uid) async {
     return Scaffold(
       backgroundColor: AppColors.backgroundBeige,
       appBar: AppBar(
-        title:  Center(child: Text('🗓️ الاجتماعات الأسبوعية       ', style: TextStyle(color: AppColors.secondaryGold, fontWeight: FontWeight.bold))),
+        title:  const Center(child: Text('🗓️ الاجتماعات الأسبوعية       ', style: TextStyle(color: AppColors.secondaryGold, fontWeight: FontWeight.bold))),
         backgroundColor: AppColors.primaryBlue,
         elevation: 8, // زيادة الـ Elevation للأناقة
       ),

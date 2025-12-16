@@ -50,7 +50,9 @@ class _AppDrawerState extends State<AppDrawer> {
     {'title': 'سجل طلبات الافتقاد', 'icon': Icons.home_mini, 'route': '/AdminRequestsPage', 'requiresAuth': true, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': true, 'requiresNotificationSender': false},
    // ⛪ عنصر سجل الكنيسة: يتطلب المدير العام فقط
     {'title': ' سجل الكنيسه', 'icon': Icons.people_alt, 'route': '/VisitationScreen', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
-    {'title': ' اجنده الاعياد', 'icon': Icons.people_alt, 'route': '/feasts', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' اجنده الاعياد', 'icon': Icons.calendar_month, 'route': '/feasts', 'requiresAuth': true, 'requiresAdmin': true, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' chatPot', 'icon': Icons.forum, 'route': '/ChristianBotPage', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
+    {'title': ' كنيستى', 'icon': Icons.church_outlined, 'route': '/ChurchInfoScreen', 'requiresAuth': false, 'requiresAdmin': false, 'requiresSchoolManager': false, 'requiresMissingPersonManager': false, 'requiresNotificationSender': false},
 
   
   ];

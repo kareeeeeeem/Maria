@@ -748,7 +748,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
              Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => NewsPage(),
+                    builder: (context) => const NewsPage(),
                   ),
                 );              },
             ),
@@ -951,7 +951,7 @@ class _GarlandPainter extends CustomPainter {
     final goldBallPaint = Paint()..color = Colors.amber; 
 
     for (var ornament in ornaments) {
-      final ballRadius = 8.0;
+      const ballRadius = 8.0;
       final x = ornament['x'] as double;
       final yOffset = ornament['y_offset'] as double;
       final ballColor = ornament['is_red'] ? redBallPaint : goldBallPaint;

@@ -311,7 +311,7 @@ class _StorePageState extends State<StorePage> {
               stream: _productStream, // استخدام الدالة المحدثة
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('حدث خطأ: ${snapshot.error}', textAlign: TextAlign.center, style: TextStyle(color: AppColors.alertRed)));
+                  return Center(child: Text('حدث خطأ: ${snapshot.error}', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.alertRed)));
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -474,8 +474,7 @@ class _ProductCard extends StatelessWidget {
     required this.onDelete,
     required this.onEdit,
     required this.getStoreDisplayName,
-    required this.getStorePhoneNumber, 
-    super.key,
+    required this.getStorePhoneNumber,
   });
   
   void _callStore(BuildContext context, String phoneNumber) {
@@ -602,7 +601,7 @@ class _ProductCard extends StatelessWidget {
 
                       // السعر
                       Text(
-                        '${NumberFormat.currency(locale: 'ar', symbol: 'ج.م').format(product.price)}', 
+                        NumberFormat.currency(locale: 'ar', symbol: 'ج.م').format(product.price), 
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 24,
@@ -890,7 +889,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   // 🆕 دالة بناء قائمة اختيار التصنيف المنسدلة
   Widget _buildCategoryDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedCategory,
+      initialValue: _selectedCategory,
       decoration: InputDecoration(
         labelText: 'اختر التصنيف',
         labelStyle: const TextStyle(color: AppColors.primaryStone, fontWeight: FontWeight.bold),
@@ -910,7 +909,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       items: kProductCategories.map((String category) {
         return DropdownMenuItem<String>(
           value: category,
-          child: Text(category, textAlign: TextAlign.right, style: TextStyle(color: AppColors.textPrimary)),
+          child: Text(category, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.textPrimary)),
         );
       }).toList(),
       onChanged: (String? newValue) {
@@ -1006,7 +1005,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
               // حقل اختيار المتجر
               DropdownButtonFormField<String>(
-                value: _selectedStore,
+                initialValue: _selectedStore,
                 decoration: InputDecoration(
                   labelText: 'اختر المتجر',
                   labelStyle: const TextStyle(color: AppColors.primaryStone, fontWeight: FontWeight.bold),
@@ -1026,7 +1025,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 items: widget.stores.map((String store) {
                   return DropdownMenuItem<String>(
                     value: store,
-                    child: Text(store, textAlign: TextAlign.right, style: TextStyle(color: AppColors.textPrimary)),
+                    child: Text(store, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.textPrimary)),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {

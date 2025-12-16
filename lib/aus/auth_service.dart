@@ -31,7 +31,7 @@ class AuthService {
       // 💡 ولا حاجة لاستدعاء .initialize() هنا، حيث يتم عادةً مرة واحدة في التهيئة أو قبل الاستدعاء مباشرةً.
       // نستخدم مباشرةً المثيل الذي تم تعريفه في بداية الكلاس: _googleSignIn.
       
-      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate(
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate(
         scopeHint: ['email','profile'], // طلب الصلاحيات
       );
 
@@ -41,7 +41,7 @@ class AuthService {
       }
 
       // 2. الحصول على تفاصيل التصديق (Authentication Details)
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       // 3. إنشاء بيانات اعتماد Firebase (Auth Credential)
       final credential = GoogleAuthProvider.credential(

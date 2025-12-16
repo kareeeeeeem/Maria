@@ -49,7 +49,7 @@ class _YourGoalScreenState extends State<YourGoalScreen> {
                 items: pageList.map((obj) => Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(22),
-                            gradient: LinearGradient(
+                            gradient: const LinearGradient(
                                 colors: Colors.accents, // ✔️ تم التأكد من استخدام Colors.primaryGradient هنا
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight),
@@ -171,7 +171,7 @@ class RoundGradientButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: Colors.primaries, // ✔️ تصحيح Colors.primaryG إلى Colors.primaryGradient هنا أيضاً
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,

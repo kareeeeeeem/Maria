@@ -84,8 +84,8 @@ class _StartScreenState extends State<StartScreen>
 
   // 🛡️ دالة عرض مربع حوار الرمز السري (المُحسَّنة)
   void _showSecretCodeDialog() {
-    final TextEditingController _codeController = TextEditingController();
-    bool _isError = false;
+    final TextEditingController codeController = TextEditingController();
+    bool isError = false;
     // لون ثابت ومناسب من تصميم الزر
     const Color primaryBlue = Color(0xFF4FC3F7); 
     const Color darkBlue = Color(0xFF1E88E5); 
@@ -106,11 +106,11 @@ class _StartScreenState extends State<StartScreen>
               ),
               elevation: 10,
               titlePadding: const EdgeInsets.only(top: 25, bottom: 5),
-              title: Column(
+              title: const Column(
                 children: [
-                  const Icon(Icons.lock_open, color: darkBlue, size: 36),
-                  const SizedBox(height: 8),
-                  const Text(
+                  Icon(Icons.lock_open, color: darkBlue, size: 36),
+                  SizedBox(height: 8),
+                  Text(
                     "إدخال رمز الوصول",
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -120,7 +120,7 @@ class _StartScreenState extends State<StartScreen>
                       color: Colors.black87,
                     ),
                   ),
-                  const Divider(color: Colors.black12, height: 15, indent: 20, endIndent: 20),
+                  Divider(color: Colors.black12, height: 15, indent: 20, endIndent: 20),
                 ],
               ),
               content: Column(
@@ -137,13 +137,13 @@ class _StartScreenState extends State<StartScreen>
                   ),
                   const SizedBox(height: 15),
                   TextField(
-                    controller: _codeController,
+                    controller: codeController,
                     textAlign: TextAlign.center,
                     // 💡 تم التعديل للسماح بالحروف والأرقام
                     keyboardType: TextInputType.text, 
                     obscureText: true,
                     // 💡 تم إزالة قيود الأرقام والطول للسماح بإدخال حر
-                    inputFormatters: [], 
+                    inputFormatters: const [], 
                     style: const TextStyle(
                       fontFamily: "Cairo",
                       fontWeight: FontWeight.bold,
@@ -152,7 +152,7 @@ class _StartScreenState extends State<StartScreen>
                     ),
                     decoration: InputDecoration(
                       hintText: "الرمز السري",
-                      errorText: _isError ? "الرمز غير صحيح. حاول مرة أخرى." : null,
+                      errorText: isError ? "الرمز غير صحيح. حاول مرة أخرى." : null,
                       filled: true,
                       fillColor: Colors.blue.shade50,
                       contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20),
@@ -161,7 +161,7 @@ class _StartScreenState extends State<StartScreen>
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(15),
                         borderSide: BorderSide(
-                          color: _isError ? Colors.red.shade400 : Colors.grey.shade300,
+                          color: isError ? Colors.red.shade400 : Colors.grey.shade300,
                           width: 1,
                         ),
                       ),
@@ -179,7 +179,7 @@ class _StartScreenState extends State<StartScreen>
                       ),
                       
                       counterText: "",
-                      suffixIcon: _isError ? const Icon(Icons.error, color: Colors.red) : null,
+                      suffixIcon: isError ? const Icon(Icons.error, color: Colors.red) : null,
                     ),
                   ),
                 ],
@@ -215,14 +215,14 @@ class _StartScreenState extends State<StartScreen>
                   ),
                   onPressed: () async { 
                     String? correctCode = await _getSecretCodeFromFirebase();
-                    String enteredCode = _codeController.text;
+                    String enteredCode = codeController.text;
                     
                     if (correctCode != null && enteredCode == correctCode) {
                       Navigator.of(context).pop();
                       _navigateToOnBoarding();
                     } else {
                       setState(() {
-                        _isError = true;
+                        isError = true;
                       });
                     }
                   },

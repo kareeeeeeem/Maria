@@ -28,7 +28,7 @@ class VisitationPage extends StatelessWidget {
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
-          '📝 طلب الافتقاد والخدمة',
+          '📝 طلب الافتقاد ',
           style: TextStyle(color: AppColors.secondaryGold),
         ),
                  centerTitle: true,
@@ -94,7 +94,7 @@ class __VisitationRequestFormState extends State<_VisitationRequestForm> {
       } catch (e) {
         // 4. رسالة الخطأ
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('❌ فشل الإرسال. تحقق من تهيئة Firebase وقواعد الأمان.'),
             backgroundColor: Colors.red,
           ),

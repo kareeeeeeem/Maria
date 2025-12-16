@@ -97,10 +97,10 @@ class _VisitationScreenState extends State<VisitationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:Color(0xFF4E342E),
+      backgroundColor:const Color(0xFF4E342E),
       appBar: AppBar(
         title:  const Text(' بيانات الشعب ', style: TextStyle(color: AppColors.accentColor)),
-      backgroundColor:Color(0xFF4E342E),
+      backgroundColor:const Color(0xFF4E342E),
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.accentColor),
         centerTitle: true,
@@ -148,7 +148,7 @@ class _VisitationScreenState extends State<VisitationScreen> {
                     final peopleInNeighborhood = groupedPeople[neighborhood]!;
 
                     return Card(
-                      color: Color(0xFF4E342E).withOpacity(0.9),
+                      color: const Color(0xFF4E342E).withOpacity(0.9),
                       elevation: 5,
                       margin: const EdgeInsets.only(bottom: 10),
                       shape: RoundedRectangleBorder(
@@ -197,7 +197,7 @@ class _VisitationScreenState extends State<VisitationScreen> {
               hintStyle: TextStyle(color: AppColors.whiteColor.withOpacity(0.5)),
               prefixIcon: const Icon(Icons.search, color: AppColors.accentColor),
               filled: true,
-              fillColor:      Color(0xFF4E342E)
+              fillColor:      const Color(0xFF4E342E)
 .withOpacity(0.9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
@@ -212,14 +212,14 @@ class _VisitationScreenState extends State<VisitationScreen> {
           ),
           const SizedBox(height: 30),
           DropdownButtonFormField<String>(
-            value: _selectedFilter,
-            dropdownColor:      Color(0xFF4E342E)
+            initialValue: _selectedFilter,
+            dropdownColor:      const Color(0xFF4E342E)
 ,
             decoration: InputDecoration(
               labelText: 'مرشح الافتقاد',
               labelStyle: const TextStyle(color: AppColors.accentColor),
               filled: true,
-              fillColor:      Color(0xFF4E342E).withOpacity(0.9),
+              fillColor:      const Color(0xFF4E342E).withOpacity(0.9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
@@ -360,7 +360,7 @@ class _VisitationScreenState extends State<VisitationScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-        backgroundColor:Color(0xFF4E342E),
+        backgroundColor:const Color(0xFF4E342E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: AppColors.accentColor)),
           title: Text(
             'تفاصيل وسجلات: ${personData['fullName']}',
@@ -443,7 +443,7 @@ class _VisitationScreenState extends State<VisitationScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-        backgroundColor:Color(0xFF4E342E),
+        backgroundColor:const Color(0xFF4E342E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: AppColors.accentColor)),
           title: Text(
             'تسجيل افتقاد لـ $name',

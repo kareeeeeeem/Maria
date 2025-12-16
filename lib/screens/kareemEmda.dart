@@ -15,7 +15,7 @@ class AppColors {
   static const Color whiteColor = Color(0xFFFFFFFF);
   static const Color blackColor = Color(0xFF1D1617);
   static const Color darkGrayColor = Color(0xFFC0C0C0);
-  static const Color primaryColor = const Color.fromARGB(255, 0, 93, 139); // Dark Maroon/Deep Red
+  static const Color primaryColor = Color.fromARGB(255, 0, 93, 139); // Dark Maroon/Deep Red
   static const Color accentColor = Color.fromARGB(255, 242, 241, 240); // Electric Gold/Amber
   static const Color lightGrayColor = Color(0xFF555555);
   static const Color skeletonColor = Color(0xFF333333); // لون الهيكل
@@ -120,7 +120,7 @@ class ProfileSkeleton extends StatelessWidget {
           Center(
             child: Column(
               children: [
-                Container(width: 120, height: 120, decoration: BoxDecoration(color: AppColors.skeletonColor, shape: BoxShape.circle)),
+                Container(width: 120, height: 120, decoration: const BoxDecoration(color: AppColors.skeletonColor, shape: BoxShape.circle)),
                 const SizedBox(height: 10),
                 Container(width: 180, height: 25, color: AppColors.skeletonColor),
                 const SizedBox(height: 5),
@@ -273,15 +273,49 @@ Future<DeveloperProfile?> _fetchProfile() async {
   // =========================================================================
   // الدوال المساعدة - للروابط وصف الاتصال
   // =========================================================================
+  // =========================================================================
+// الدوال المساعدة - للروابط وصف الاتصال (هذه هي الدالة التي يجب تعديلها)
+// =========================================================================
+
+void _launchURL(String url, BuildContext context) async {
   
-  void _launchURL(String url, BuildContext context) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch $url')),
-      );
-    }
+  String processedUrl = url.trim();
+
+  // 1. فحص الروابط التي يجب أن تكون https:// (مع استثناء mailto: و tel:)
+  if (processedUrl.isNotEmpty && 
+      !processedUrl.startsWith('http://') && 
+      !processedUrl.startsWith('https://') &&
+      !processedUrl.startsWith('mailto:') &&
+      !processedUrl.startsWith('tel:')) 
+  {
+      // إضافة بروتوكول https كخيار افتراضي للروابط الاجتماعية
+      processedUrl = 'https://$processedUrl';
+      debugPrint('⚠️ تم تصحيح الرابط تلقائياً إلى: $processedUrl');
   }
+
+  // 2. تحليل الـ URI ومحاولة فتحه
+  final uri = Uri.tryParse(processedUrl);
+  
+  // تحقق مما إذا كان تحليل الـ URI ناجحاً وكان لديه مخطط (Scheme)
+  if (uri == null || !uri.hasScheme) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('الرابط غير صالح: $processedUrl')),
+      );
+      return; 
+  }
+
+
+  if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+     debugPrint('✅ تم إطلاق الرابط بنجاح: $processedUrl');
+  } else {
+    // فشل launchUrl
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('❌ تعذر فتح الرابط: $processedUrl')),
+    );
+  }
+}
+
+// =========================================================================
 
   // 💡 ويدجت صف الاتصال (مُعدَّل ليتوافق مع الأنيميشن الجديد)
   Widget _buildContactRow(int index, Map<String, String> item) {
@@ -441,7 +475,7 @@ print('Path: developer_info/profile/profile');
                                             fit: BoxFit.cover,
                                             loadingBuilder: (context, child, loadingProgress) {
                                                 if (loadingProgress == null) return child;
-                                                return Center(child: CircularProgressIndicator(color: AppColors.whiteColor));
+                                                return const Center(child: CircularProgressIndicator(color: AppColors.whiteColor));
                                             },
                                             errorBuilder: (context, error, stackTrace) => 
                                                 Text(
