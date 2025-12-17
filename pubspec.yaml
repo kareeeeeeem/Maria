@@ -134,7 +134,7 @@ flutter:
     - assets/icons/
     - assets/lottie/
     - assets/ar_svd.json
-    - .env
+    - assets/.env
     - assets/verses.txt
     - shorebird.yaml
 

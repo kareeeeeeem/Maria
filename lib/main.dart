@@ -337,7 +337,14 @@ Future<void> main() async {
   }
   // ------------------
 
-  await dotenv.load(fileName: ".env");
+  // ابحث عن سطر dotenv.load واستبدله بهذا الجزء:
+try {
+  await dotenv.load(fileName: "assets/.env");
+  print("✅ .env file loaded successfully");
+} catch (e) {
+  print("⚠️ Warning: .env file not found or failed to load. error: $e");
+  // سيستمر التطبيق في العمل الآن ولن تظهر الشاشة البيضاء
+}
 
   
   final SharedPreferences prefs = await SharedPreferences.getInstance();
