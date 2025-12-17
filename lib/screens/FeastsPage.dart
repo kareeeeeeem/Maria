@@ -37,7 +37,7 @@ class FeastModel {
 // 2. قائمة البيانات (The Data List)
 final List<FeastModel> feastsList = [
   // هذه التواريخ خاصة بعام 1741-1742 قبطي / 2014 ميلادي
-  const FeastModel(title: 'عيد الميلاد المجيد', dateGregorian: 'الثلاثاء 7 يناير', dateCoptic: '29 كيهك 1741'),
+  const FeastModel(title: 'عيد الميلاد المجيد ', dateGregorian: 'الثلاثاء 7 يناير', dateCoptic: '29 كيهك 1741'),
   const FeastModel(title: 'عيد الختان', dateGregorian: 'الثلاثاء 14 يناير', dateCoptic: '6 طوبة 1741'),
   const FeastModel(title: 'عيد الغطاس', dateGregorian: 'الأحد 19 يناير', dateCoptic: '11 طوبة 1741'),
   const FeastModel(title: 'عرس قانا الجليل', dateGregorian: 'الثلاثاء 21 يناير', dateCoptic: '13 طوبة 1741'),
@@ -46,27 +46,27 @@ final List<FeastModel> feastsList = [
   const FeastModel(title: 'دخول السيد المسيح الهيكل', dateGregorian: 'السبت 15 فبراير', dateCoptic: '8 أمشير 1741'),
   const FeastModel(title: 'بدء الصوم الاربعيني المقدس', dateGregorian: 'الاثنين 24 فبراير', dateCoptic: '17 أمشير 1741'),
   const FeastModel(title: 'عيد ظهور الصليب المقدس', dateGregorian: 'الأربعاء 19 مارس', dateCoptic: '10 برمهات 1741'),
-  const FeastModel(title: 'عيد البشارة المجيد', dateGregorian: 'الاثنين 7 أبريل', dateCoptic: '29 برمهات 1741'),
+  const FeastModel(title: 'عيد البشارة ', dateGregorian: 'الاثنين 7 أبريل', dateCoptic: '29 برمهات 1741'),
   const FeastModel(title: 'ختام الصوم الاربعيني المقدس', dateGregorian: 'الجمعة 11 أبريل', dateCoptic: '3 برمودة 1741'),
   const FeastModel(title: 'سبت لعازر', dateGregorian: 'السبت 12 أبريل', dateCoptic: '4 برمودة 1741'),
   const FeastModel(title: 'أحد الشعانين', dateGregorian: 'الأحد 13 أبريل', dateCoptic: '5 برمودة 1741'),
   const FeastModel(title: 'خميس العهد', dateGregorian: 'الخميس 17 أبريل', dateCoptic: '9 برمودة 1741'),
   const FeastModel(title: 'الجمعة العظيمة', dateGregorian: 'الجمعة 18 أبريل', dateCoptic: '10 برمودة 1741'),
   const FeastModel(title: 'سبت الفرح', dateGregorian: 'السبت 19 أبريل', dateCoptic: '11 برمودة 1741'),
-  const FeastModel(title: 'عيد القيامة المجيد', dateGregorian: 'الأحد 20 أبريل', dateCoptic: '12 برمودة 1741'),
+  const FeastModel(title: 'عيد القيامه المجيد ', dateGregorian: 'الأحد 20 أبريل', dateCoptic: '12 برمودة 1741'),
   const FeastModel(title: 'شم النسيم', dateGregorian: 'الاثنين 21 أبريل', dateCoptic: '13 برمودة 1741'),
   const FeastModel(title: 'أحد توما', dateGregorian: 'الأحد 27 أبريل', dateCoptic: '19 برمودة 1741'),
   const FeastModel(title: 'عيد الصعود', dateGregorian: 'الخميس 29 مايو', dateCoptic: '21 بشنس 1741'),
   const FeastModel(title: 'عيد دخول السيد المسيح أرض مصر', dateGregorian: 'الأحد 1 يونيو', dateCoptic: '24 بشنس 1741'),
   const FeastModel(title: 'عيد حلول الروح القدس_عيد العنصره', dateGregorian: 'الأحد 8 يونيو', dateCoptic: '1 بؤونة 1741'),
   const FeastModel(title: 'بدء صوم الرسل', dateGregorian: 'الاثنين 9 يونيو', dateCoptic: '2 بؤونة 1741'),
-  const FeastModel(title: 'عيد إستشهاد القديسين بطرس وبولس', dateGregorian: 'السبت 12 يوليو', dateCoptic: '5 أبيب 1741'),
+  const FeastModel(title: 'عيد إستشهاد القديسين العظيمين بطرس وبولس', dateGregorian: 'السبت 12 يوليو', dateCoptic: '5 أبيب 1741'),
   const FeastModel(title: 'بدء صوم السيدة العذراء مريم', dateGregorian: 'الخميس 7 أغسطس', dateCoptic: '1 مسرى 1741'),
-  const FeastModel(title: 'عيد التجلى المجيد', dateGregorian: 'الثلاثاء 19 أغسطس', dateCoptic: '13 مسرى 1741'),
+  const FeastModel(title: 'عيد التجلى ', dateGregorian: 'الثلاثاء 19 أغسطس', dateCoptic: '13 مسرى 1741'),
   const FeastModel(title: 'عيد إظهار صعود جسد السيدة العذراء', dateGregorian: 'الجمعة 22 أغسطس', dateCoptic: '16 مسرى 1741'),
   const FeastModel(title: 'عيد النيروز', dateGregorian: 'الخميس 11 سبتمبر', dateCoptic: '1 توت 1742'),
   const FeastModel(title: 'تذكار ظهور الصليب المقدس', dateGregorian: 'السبت 27 سبتمبر', dateCoptic: '17 توت 1742'),
-  const FeastModel(title: 'بدء صوم الميلاد', dateGregorian: 'الثلاثاء 25 نوفمبر', dateCoptic: '16 هاتور 1742'),
+  const FeastModel(title: ' صوم الميلاد المجيد ', dateGregorian: 'الثلاثاء 25 نوفمبر', dateCoptic: '16 هاتور 1742'),
 ];
 
 
@@ -137,11 +137,11 @@ class _FeastCard extends StatelessWidget {
     if (title.contains('عيد القيامة')) return Icons.church_outlined;
     if (title.contains('ميلاد')) return Icons.church_outlined;
     if (title.contains('صوم')) return Icons.church_outlined;
-    if (title.contains('الغطاس') || title.contains('قانا')) return Icons.water;
+    if (title.contains('الغطاس') || title.contains('قانا')) return Icons.church_outlined;
     if (title.contains('الصليب')) return Icons.church_outlined; 
     if (title.contains('السيدة العذراء')) return Icons.church_outlined; 
-    if (title.contains('الصعود') || title.contains('حلول الروح القدس')) return Icons.cloud_queue; 
-    return Icons.event_note;
+    if (title.contains('الصعود') || title.contains('حلول الروح القدس')) return Icons.church_outlined; 
+    return Icons.church_outlined;
   }
   
   // دالة مساعدة لتحديد اللون بناءً على نوع العيد/الصوم (للعنوان فقط)

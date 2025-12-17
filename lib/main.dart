@@ -1,7 +1,5 @@
 // lib/main.dart
-
 // ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'package:churchapp/aus/signup/MemberShipSignUp.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; 
@@ -10,11 +8,9 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
-
 import 'package:churchapp/routes.dart'; 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:churchapp/firebase_options.dart'; 
-
 // =========================================================================
 // 🔔 إضافات الإشعارات المحلية (Local Notifications Imports)
 // =========================================================================
@@ -22,6 +18,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/services.dart' show rootBundle; 
+import 'package:shorebird_code_push/shorebird_code_push.dart';
+
+
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -40,6 +39,33 @@ const String SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 const OneSignalAppId ='a3d9efe8-e736-45fc-98fa-2d4a9d4051c5';
 final notificationsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
 
+final updater = ShorebirdUpdater();
+
+
+//=========================================================================
+// 🛠️ دالة فحص تحديثات شوربيرد الصامتة
+// =========================================================================
+Future<void> _checkForShorebirdUpdates() async {
+  if (kIsWeb) return;
+
+  try {
+    // قراءة رقم الـ Patch الحالي (اختياري للـ Debugging)
+    final currentPatch = await updater.readCurrentPatch();
+    if (currentPatch != null) {
+      print("✅ Current Shorebird Patch: ${currentPatch.number}");
+    }
+
+    // الفحص والتحميل الصامت
+    final status = await updater.checkForUpdate();
+    if (status == UpdateStatus.outdated) {
+      print("🚀 New Patch found! Downloading in background...");
+      await updater.update();
+      print("✅ New Patch downloaded. Restart the app to apply.");
+    }
+  } catch (e) {
+    print("❌ Shorebird Update Error: $e");
+  }
+}
 
 // =========================================================================
 // 🔔 دالة تهيئة الإشعارات المحلية (Initialization)
@@ -284,6 +310,8 @@ String initialRoute = '/';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  _checkForShorebirdUpdates();
   
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform, 
