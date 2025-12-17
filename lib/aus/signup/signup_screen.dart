@@ -563,71 +563,102 @@ Future<void> _signUp() async {
                   const SizedBox(height: 10),
       
                   // Google Login Button 
-                 // 💡 هذا هو الجزء المحدث
-Stack(
-  // نضع الزر والشارة فوق بعضهما البعض
-  clipBehavior: Clip.none, // مهم للسماح بظهور الشارة خارج حدود الزر
-  children: [
-    // 1. الزر الأساسي (المحتوى الذي كان لديك)
-    SizedBox(
-      width: MediaQuery.of(context).size.width * 0.8,
-      height: 50, 
-      child: ElevatedButton.icon(
-        onPressed: _isLoading ? null : _signInWithGoogle,
-        icon: const Icon(
-          Icons.g_mobiledata,
-          size: 28,
-          color: Colors.white,
-        ),
-        label: const Text(
+                   SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.8,
+                    height: 50, 
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _signInWithGoogle,
+                      icon: const Icon(
+                      Icons.g_mobiledata,
+                      size: 28,
+                      color: Colors.white,
+                    ),
+                      label: const Text(
           'المتابعة باستخدام Google', 
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFDB4437),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          elevation: 5,
-        ),
-      ),
-    ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 5, 
+                      ),
+                    ),
+                  ),
+      
+
+
+//                  // 💡 هذا هو الجزء المحدث
+// Stack(
+//   // نضع الزر والشارة فوق بعضهما البعض
+//   clipBehavior: Clip.none, // مهم للسماح بظهور الشارة خارج حدود الزر
+//   children: [
+//     // 1. الزر الأساسي (المحتوى الذي كان لديك)
+//     SizedBox(
+//       width: MediaQuery.of(context).size.width * 0.8,
+//       height: 50, 
+//       child: ElevatedButton.icon(
+//         onPressed: _isLoading ? null : _signInWithGoogle,
+//         icon: const Icon(
+//           Icons.g_mobiledata,
+//           size: 28,
+//           color: Colors.white,
+//         ),
+//         label: const Text(
+//           'المتابعة باستخدام Google', 
+//           style: TextStyle(
+//             color: Colors.white,
+//             fontSize: 16,
+//             fontWeight: FontWeight.w600,
+//           ),
+//         ),
+//         style: ElevatedButton.styleFrom(
+//           backgroundColor: const Color(0xFFDB4437),
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(30),
+//           ),
+//           padding: const EdgeInsets.symmetric(vertical: 14),
+//           elevation: 5,
+//         ),
+//       ),
+//     ),
     
-    // 2. الشارة / التاج (التي تشير إلى التوصية)
-    // Positioned(
-    //   top: -10, // ارتفاع الشارة فوق الزر
-    //   left: 10, // إزاحتها لليسار (باتجاه الأعلى اليسار)
-    //   child: Container(
-    //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-    //     decoration: BoxDecoration(
-    //       color: Colors.amber, // لون جذاب ومميز
-    //       borderRadius: BorderRadius.circular(15),
-    //       boxShadow: [
-    //         BoxShadow(
-    //           color: Colors.black.withOpacity(0.3),
-    //           blurRadius: 3,
-    //           offset: const Offset(1, 1),
-    //         ),
-    //       ],
-    //     ),
-    //     // child: const Text(
-    //     //   'يفضل', // أو "موصى به" أو "الأكثر شيوعاً"
-    //     //   style: TextStyle(
-    //     //     color: Colors.black, // نص غامق على خلفية فاتحة
-    //     //     fontSize: 12,
-    //     //     fontWeight: FontWeight.bold,
-    //     //   ),
-    //     // ),
-    //   ),
-    // ),
-  ],
-),
-// 💡 نهاية الجزء المحدث
+//     // 2. الشارة / التاج (التي تشير إلى التوصية)
+//     Positioned(
+//       top: -10, // ارتفاع الشارة فوق الزر
+//       left: 10, // إزاحتها لليسار (باتجاه الأعلى اليسار)
+//       child: Container(
+//         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+//         decoration: BoxDecoration(
+//           color: Colors.amber, // لون جذاب ومميز
+//           borderRadius: BorderRadius.circular(15),
+//           boxShadow: [
+//             BoxShadow(
+//               color: Colors.black.withOpacity(0.3),
+//               blurRadius: 3,
+//               offset: const Offset(1, 1),
+//             ),
+//           ],
+//         ),
+//         // child: const Text(
+//         //   'يفضل', // أو "موصى به" أو "الأكثر شيوعاً"
+//         //   style: TextStyle(
+//         //     color: Colors.black, // نص غامق على خلفية فاتحة
+//         //     fontSize: 12,
+//         //     fontWeight: FontWeight.bold,
+//         //   ),
+//         // ),
+//       ),
+//     ),
+//   ],
+// ),
+// // 💡 نهاية الجزء المحدث
                 
                 
                   const SizedBox(height: 10),

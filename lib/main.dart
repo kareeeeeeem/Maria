@@ -91,6 +91,7 @@ Future<void> requestAndroidPermissions() async {
   }
 }
 Future<void> _initializeLocalNotifications() async {
+  if (kIsWeb) return;
   // تهيئة المناطق الزمنية
   tz.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Africa/Cairo')); 
@@ -134,7 +135,7 @@ Future<void> _loadVerses() async {
 // =========================================================================
 
 Future<void> _scheduleDailyVerseNotification() async {
-  if (versesList.isEmpty) return; 
+  if (kIsWeb || versesList.isEmpty) return;
 
   await flutterLocalNotificationsPlugin.cancelAll(); 
 
@@ -323,21 +324,19 @@ Future<void> main() async {
     anonKey: SUPABASE_ANON_KEY,
   );
   await _initializeOneSignal();
-  
-  // 1. تهيئة الإشعارات المحلية أولاً
-  await _initializeLocalNotifications();
-  
-  // 2. طلب الإذن (الآن فقط يعمل بشكل صحيح بعد تهيئة الـ Plugin)
-  await requestAndroidPermissions(); // ⬅️ ضع هذا السطر هنا
+  if (!kIsWeb) {
+    // هذه الدوال تعمل فقط على أندرويد و iOS
+    await _initializeLocalNotifications();
+    await requestAndroidPermissions();
+    await _loadVerses();
+    await _scheduleDailyVerseNotification();
+  } else {
+    // في حالة الويب، نحمل الآيات فقط إذا كنت تستخدمها في الواجهة
+    await _loadVerses(); 
+    print("🌐 Running on Web: Local Notifications skipped.");
+  }
+  // ------------------
 
-  await _loadVerses();
-  
-  // 3. جدولة الإشعار اليومي 
-  await _scheduleDailyVerseNotification();
- 
-  // 4. اختبار الإشعار الفوري (بعد 5 ثوانٍ)
-  //await _showInstantTestNotification();
-  
   await dotenv.load(fileName: ".env");
 
   
