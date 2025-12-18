@@ -8777,7 +8777,7 @@ break
 case 7:q=6
 d=p.pop()
 o=A.X(d)
-A.cC("\u26a0\ufe0f Warning: .env file not found or failed to load. error: "+A.j(o))
+A.cC("\u26a0\ufe0f Warning: .env file not found. Error: "+A.j(o))
 s=9
 break
 case 6:s=1
