@@ -339,11 +339,11 @@ Future<void> main() async {
 
   // ابحث عن سطر dotenv.load واستبدله بهذا الجزء:
 try {
+  // جرب تحمل الملف، وإذا فشل كمل عادي عشان الشاشة البيضاء تختفي
   await dotenv.load(fileName: "assets/.env");
   print("✅ .env file loaded successfully");
 } catch (e) {
-  print("⚠️ Warning: .env file not found or failed to load. error: $e");
-  // سيستمر التطبيق في العمل الآن ولن تظهر الشاشة البيضاء
+  print("⚠️ Warning: .env file not found. Error: $e");
 }
 
   
