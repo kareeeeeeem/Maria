@@ -8769,7 +8769,7 @@ return A.l(A.b2X(),$async$uy)
 case 5:A.cC("\ud83c\udf10 Running on Web: Local Notifications skipped.")
 q=7
 s=10
-return A.l($.baZ().BS(0,"assets/.env"),$async$uy)
+return A.l($.baZ().BS(0,".env"),$async$uy)
 case 10:A.cC("\u2705 .env file loaded successfully")
 q=1
 s=9
